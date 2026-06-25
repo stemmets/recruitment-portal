@@ -791,7 +791,7 @@ function getProgramRange(p) {
    STRATEGY UTILS
 ══════════════════════════════════════════════ */
 function getMode(id) { return COOPERATION_MODES.find(m=>m.id===id); }
-function nextVer()   { return Math.max(...strategies.map(s=>s.version))+1; }
+function nextVer()   { const ps=strategies.filter(s=>s.positionId===currentId); return ps.length?Math.max(...ps.map(s=>s.version))+1:1; }
 
 /* ══════════════════════════════════════════════
    NAVIGATION
@@ -1000,7 +1000,7 @@ function clearFilters() {
    STAFFING STRATEGY
 ══════════════════════════════════════════════ */
 function ssRender() {
-  const active=strategies.find(s=>s.status==='active');
+  const active=strategies.find(s=>s.status==='active'&&s.positionId===currentId);
   ssRenderStrategy(active);
   ssRenderHistory();
 }
@@ -1082,40 +1082,71 @@ function ssRenderDelivAndTimeline(s) {
   const mode=getMode(s.modeId); if(!mode) return '';
   const today=new Date(); today.setHours(0,0,0,0);
   const todayStr=today.toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'numeric'});
-  const steps=mode.deliverables.map((def,i)=>{
+
+  // Split: milestones with date go on the timeline; count-only appear as stat chips
+  const milestones=[{label:'Strategy Created',icon:'📋',date:s.createdAt,count:null}];
+  const countOnly=[];
+  mode.deliverables.forEach(def=>{
     const val=s.deliverableValues.find(v=>v.id===def.id)||{};
-    const hasCount=val.count!=null;
-    const hasDate=!!val.date;
-    const isPast=hasDate&&new Date(val.date+'T00:00:00')<=today;
-    const isLast=i===mode.deliverables.length-1;
-    const dotColor=isPast?'background:var(--green)':(hasDate?'background:white;border:2px solid var(--gray-400)':'background:white;border:2px solid var(--gray-200)');
-    const countBadge=hasCount
-      ?`<span style="background:var(--gray-100);color:var(--gray-700);font-size:12px;font-weight:600;padding:2px 10px;border-radius:10px;">${val.count.toLocaleString()}</span>`
-      :'';
-    const datePart=hasDate
-      ?`<span style="font-size:12px;color:${isPast?'var(--gray-400)':'var(--gray-700)'};">📅 ${fmt(val.date)}</span>`
-      :`<span style="font-size:12px;color:var(--gray-300);">📅 —</span>`;
-    return `<div style="display:flex;gap:16px;">
-      <div style="display:flex;flex-direction:column;align-items:center;flex-shrink:0;width:12px;">
-        <div style="width:12px;height:12px;border-radius:50%;flex-shrink:0;margin-top:13px;${dotColor}"></div>
-        ${!isLast?`<div style="width:2px;flex:1;min-height:10px;background:var(--gray-200);margin-top:3px;"></div>`:''}
-      </div>
-      <div style="padding-top:7px;padding-bottom:${isLast?'0':'14px'};flex:1;">
-        <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
-          <span style="font-size:16px;">${def.icon}</span>
-          <span style="font-size:14px;font-weight:500;">${def.label}</span>
-          ${countBadge}
-          <span style="margin-left:auto;">${datePart}</span>
-        </div>
+    if(val.date) milestones.push({label:def.label,icon:def.icon,date:val.date,count:val.count??null});
+    else if(val.count!=null) countOnly.push({label:def.label,icon:def.icon,count:val.count});
+  });
+
+  const statsRow=countOnly.length?`<div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:20px;">
+    ${countOnly.map(x=>`<div style="display:flex;align-items:center;gap:8px;background:var(--gray-50);border:1px solid var(--gray-200);border-radius:8px;padding:8px 14px;">
+      <span style="font-size:16px">${x.icon}</span>
+      <div><div style="font-size:18px;font-weight:700;line-height:1">${x.count.toLocaleString()}</div><div style="font-size:11px;color:var(--gray-500);margin-top:2px">${x.label}</div></div>
+    </div>`).join('')}
+  </div>`:'';
+
+  if(milestones.length<2) return `<div class="card" style="margin-bottom:16px">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
+      <span class="font-600" style="font-size:14px">Deliverables & Timeline</span>
+      <span class="text-muted text-sm">Today: ${todayStr}</span>
+    </div>
+    ${statsRow}
+    <div style="text-align:center;font-size:13px;color:var(--gray-400);padding:12px 0">Add target dates to see the timeline</div>
+  </div>`;
+
+  const times=milestones.map(m=>new Date(m.date+'T00:00:00').getTime());
+  const minMs=Math.min(...times), maxMs=Math.max(...times), span=maxMs-minMs||1;
+  // map to 3–97% to avoid clipping at edges
+  function toPct(d){return((new Date(d+'T00:00:00').getTime()-minMs)/span*94+3).toFixed(2);}
+  const todayRaw=(today.getTime()-minMs)/span*94+3;
+  const todayPct=Math.max(3,Math.min(97,todayRaw));
+  const showToday=todayRaw>=3&&todayRaw<=97;
+
+  const dots=milestones.map(m=>{
+    const pct=toPct(m.date);
+    const isPast=new Date(m.date+'T00:00:00')<=today;
+    const dotBg=isPast?'var(--green)':'white';
+    const dotBrd=isPast?'var(--green)':'var(--gray-300)';
+    return `<div style="position:absolute;left:${pct}%;top:0;transform:translateX(-50%);display:flex;flex-direction:column;align-items:center;width:80px;margin-left:-40px;">
+      <div style="width:12px;height:12px;border-radius:50%;background:${dotBg};border:2px solid ${dotBrd};flex-shrink:0"></div>
+      <div style="text-align:center;margin-top:6px;width:80px">
+        <div style="font-size:10px;font-weight:600;color:var(--gray-700);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${m.icon} ${m.label}</div>
+        <div style="font-size:10px;color:${isPast?'var(--gray-400)':'var(--gray-600)'};margin-top:1px">${fmtShort(m.date)}</div>
+        ${m.count!=null?`<div style="font-size:11px;font-weight:700;color:var(--green-dark);margin-top:2px">${m.count.toLocaleString()}</div>`:''}
       </div>
     </div>`;
   }).join('');
-  return `<div class="card" style="margin-bottom:16px;">
-    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
-      <span class="font-600" style="font-size:14px;">Deliverables & Timeline</span>
+
+  const todayLine=showToday?`<div style="position:absolute;left:${todayPct}%;top:0;width:2px;height:12px;background:#EF4444;transform:translateX(-50%)"></div>`:'';
+  const progressLine=showToday?`<div style="position:absolute;left:3%;width:${(todayPct-3).toFixed(2)}%;top:5px;height:2px;background:var(--green)"></div>`:'';
+
+  return `<div class="card" style="margin-bottom:16px">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
+      <span class="font-600" style="font-size:14px">Deliverables & Timeline</span>
       <span class="text-muted text-sm">Today: ${todayStr}</span>
     </div>
-    ${steps}
+    ${statsRow}
+    <div style="overflow-x:auto">
+      <div style="min-width:480px;position:relative">
+        <div style="position:absolute;left:3%;right:3%;top:5px;height:2px;background:var(--gray-200)"></div>
+        ${progressLine}
+        <div style="position:relative;height:90px">${todayLine}${dots}</div>
+      </div>
+    </div>
   </div>`;
 }
 
@@ -1173,7 +1204,7 @@ function ssRenderNotes(s) {
 }
 
 function ssRenderHistory() {
-  const archived=[...strategies].filter(s=>s.status==='archived').sort((a,b)=>b.version-a.version);
+  const archived=[...strategies].filter(s=>s.status==='archived'&&s.positionId===currentId).sort((a,b)=>b.version-a.version);
   const root=document.getElementById('history-root');
   if(!archived.length){root.innerHTML='';return;}
   const arrowChar=histListOpen?'▲':'▼';
@@ -1215,14 +1246,14 @@ function ssToggleHistItem(id){histOpen[id]=!histOpen[id];ssRenderHistory();}
 /* ── Strategy Modal ── */
 function ssOpenModal(mode,id=null) {
   ssModalMode=mode; ssEditingId=id;
-  const prefill=mode==='edit'?strategies.find(s=>s.id===id):strategies.find(s=>s.status==='active');
+  const prefill=mode==='edit'?strategies.find(s=>s.id===id):strategies.find(s=>s.status==='active'&&s.positionId===currentId);
   formOriginalModeId=prefill?.modeId||null;
   formPrefillValues=[...(prefill?.deliverableValues||[])];
   formChannels=[...(prefill?.channels||['LinkedIn','Djinni'])];
   formCustomChannels=[...(prefill?.customChannels||[])];
   const ver=mode==='new'?nextVer():(prefill?.version||'?');
   document.getElementById('ss-modal-title').textContent=mode==='new'?`Create Strategy v${ver}`:`Edit Strategy v${ver}`;
-  document.getElementById('ss-modal-save-btn').textContent=mode==='new'?`Save as v${ver}`:'Save Changes';
+  document.getElementById('ss-modal-save-btn').textContent='Save';
   document.getElementById('ss-modal-footer-note').textContent=mode==='new'?'Current version will be archived':'Updates current version in place';
   document.getElementById('ss-modal-body').innerHTML=ssBuildForm(prefill);
   document.getElementById('ss-overlay').classList.add('open');
@@ -1242,11 +1273,6 @@ function ssBuildForm(p) {
   const initModeDesc=p?.modeId?(getMode(p.modeId)?.description||''):'';
   const initDelivRows=p?.modeId?ssBuildDelivRows(p.modeId,p.deliverableValues||[]):'';
   return `
-    <div class="m-section" ${ssModalMode==='edit'?'style="display:none;"':''}>
-      <div class="m-section-title">Version Note</div>
-      <div class="form-group"><label class="form-label">What changed and why? <span style="color:var(--gray-400);font-weight:400;">(optional)</span></label>
-      <input type="text" id="m-note" placeholder="e.g. Raised comp range after market review"></div>
-    </div>
     <div class="m-section">
       <div class="m-section-title">Cooperation Mode & Deliverables</div>
       <div class="form-group">
@@ -1348,7 +1374,7 @@ function saveStrategy() {
   if(ssModalMode==='new'){
     strategies.forEach(s=>{if(s.status==='active')s.status='archived';});
     const ver=nextVer();
-    strategies.push({id:Date.now(),version:ver,status:'active',createdAt:new Date().toISOString().slice(0,10),createdBy:'Sarah Park',versionNote:verNote,modeId,deliverableValues,channels:[...formChannels],customChannels:[...formCustomChannels],compensation:comp,notes});
+    strategies.push({id:Date.now(),version:ver,status:'active',positionId:currentId,createdAt:new Date().toISOString().slice(0,10),createdBy:'Sarah Park',modeId,deliverableValues,channels:[...formChannels],customChannels:[...formCustomChannels],compensation:comp,notes});
     toast(`✓ Strategy v${ver} saved — previous version archived`);
   } else {
     const idx=strategies.findIndex(s=>s.id===ssEditingId);
@@ -1684,14 +1710,25 @@ function hpRenderLinkedPositions(p) {
   if (!linked.length) return `<div class="card"><div class="empty-state" style="padding:20px"><div class="es-text">No portal positions linked yet</div><div class="es-sub">Link recruitment requests to this program to track them here</div></div></div>`;
   const rows = linked.map(pos => {
     const grp = p.groups.find(g => g.id === pos.groupId);
-    return `<div style="display:flex;align-items:center;gap:12px;padding:12px 16px;border-bottom:1px solid var(--gray-100);">
-      <div style="flex:1;min-width:0;">
-        <div style="font-weight:500;font-size:14px;">${pos.pos}</div>
-        <div style="font-size:12px;color:var(--gray-500);margin-top:2px;">${pos.lvl.join(', ')} · ${pos.locs.join(', ')}</div>
+    const strat = strategies.find(s=>s.status==='active'&&s.positionId===pos.id);
+    const mode = strat ? getMode(strat.modeId) : null;
+    const keyDates = mode ? mode.deliverables
+      .filter(d=>d.isTimeline)
+      .map(def=>{
+        const val=strat.deliverableValues.find(v=>v.id===def.id)||{};
+        return val.date?`<span style="font-size:11px;color:var(--gray-500);white-space:nowrap">${def.icon} ${def.label}: <strong>${fmtShort(val.date)}</strong></span>`:null;
+      }).filter(Boolean) : [];
+    return `<div style="padding:12px 16px;border-bottom:1px solid var(--gray-100);">
+      <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;">
+        <div style="flex:1;min-width:0;">
+          <div style="font-weight:500;font-size:14px;">${pos.pos}</div>
+          <div style="font-size:12px;color:var(--gray-500);margin-top:2px;">${pos.lvl.join(', ')} · ${pos.locs.join(', ')}</div>
+        </div>
+        ${grp?`<span style="font-size:12px;color:var(--gray-400);flex-shrink:0;">${grp.name}</span>`:''}
+        ${badge(pos.status)}
+        <button onclick="hpUnlinkPosition(${pos.id})" style="font-size:11px;color:var(--gray-400);border:1px solid var(--gray-200);border-radius:5px;padding:3px 8px;background:white;cursor:pointer;flex-shrink:0;">Unlink</button>
       </div>
-      ${grp?`<span style="font-size:12px;color:var(--gray-400);flex-shrink:0;">${grp.name}</span>`:''}
-      ${badge(pos.status)}
-      <button onclick="hpUnlinkPosition(${pos.id})" style="font-size:11px;color:var(--gray-400);border:1px solid var(--gray-200);border-radius:5px;padding:3px 8px;background:white;cursor:pointer;flex-shrink:0;">Unlink</button>
+      ${keyDates.length?`<div style="display:flex;gap:16px;flex-wrap:wrap;margin-top:8px;padding-top:8px;border-top:1px solid var(--gray-100);">${keyDates.join('')}</div>`:''}
     </div>`;
   }).join('');
   return `<div class="card" style="padding:0;overflow:hidden;">${rows}</div>`;
