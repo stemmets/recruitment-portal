@@ -1660,11 +1660,14 @@ function hpGroupModal(mode,gid) {
   hpModalMode=mode==='edit'?'edit-group':'new-group'; hpEditGid=gid;
   const p=programs.find(x=>x.id===hpCurrentId);
   const g=gid?p.groups.find(x=>x.id===gid):null;
-  const hpLinked=positions.filter(pos=>pos.programId===hpCurrentId);
-  const posRows=hpLinked.length
-    ? hpLinked.map(pos=>{
-        const checked=g&&pos.groupId===g.id;
-        const inOtherGroup=g?pos.groupId&&pos.groupId!==g.id:pos.groupId;
+  // Show all positions — check if already in this group; note if in another program
+  const posRows=positions.length
+    ? positions.map(pos=>{
+        const checked=g&&pos.groupId===g.id&&pos.programId===hpCurrentId;
+        const inThisHP=pos.programId===hpCurrentId;
+        const inOtherHP=pos.programId&&pos.programId!==hpCurrentId;
+        const otherHP=inOtherHP?programs.find(pr=>pr.id===pos.programId):null;
+        const inOtherGroup=inThisHP&&pos.groupId&&(g?pos.groupId!==g.id:true);
         const otherGrp=inOtherGroup?p.groups.find(gr=>gr.id===pos.groupId):null;
         const strat=strategies.find(s=>s.status==='active'&&s.positionId===pos.id);
         const mode2=strat?getMode(strat.modeId):null;
@@ -1672,19 +1675,20 @@ function hpGroupModal(mode,gid) {
           const val=strat.deliverableValues.find(v=>v.id===def.id)||{};
           return val.date?`${def.label}: ${fmtShort(val.date)}`:null;
         }).filter(Boolean):[];
-        return `<label style="display:flex;align-items:flex-start;gap:8px;padding:8px 10px;background:var(--gray-50);border-radius:6px;cursor:pointer;margin-bottom:4px">
-          <input type="checkbox" data-pos="${pos.id}" ${checked?'checked':''} style="margin-top:2px;flex-shrink:0">
+        return `<label style="display:flex;align-items:flex-start;gap:8px;padding:8px 10px;background:var(--gray-50);border-radius:6px;cursor:pointer;margin-bottom:4px;${inOtherHP?'opacity:0.6':''}">
+          <input type="checkbox" data-pos="${pos.id}" ${checked?'checked':''} ${inOtherHP?'disabled':''} style="margin-top:2px;flex-shrink:0">
           <div style="flex:1;min-width:0">
             <div style="font-size:13px;font-weight:500;display:flex;align-items:center;gap:6px;flex-wrap:wrap">
               ${pos.pos}
               <span class="badge ${pos.status==='Draft'?'b-draft':pos.status==='In Progress'?'b-progress':'b-completed'}">${pos.status}</span>
+              ${otherHP?`<span style="font-size:11px;color:var(--gray-400)">in ${otherHP.name}</span>`:''}
               ${otherGrp?`<span style="font-size:11px;color:var(--gray-400)">→ ${otherGrp.name}</span>`:''}
             </div>
             ${keyDates.length?`<div style="font-size:11px;color:var(--gray-400);margin-top:3px">${keyDates.join(' · ')}</div>`:''}
           </div>
         </label>`;
       }).join('')
-    : `<div style="font-size:12px;color:var(--gray-400);padding:6px 0">No positions linked to this program yet.</div>`;
+    : `<div style="font-size:12px;color:var(--gray-400);padding:6px 0">No positions in the portal yet.</div>`;
   const body=`
     <div class="fg"><label class="fl">Group Name *</label><input class="fi" id="m-gname" placeholder='e.g. "Wave 1", "Phase 2"...' value="${g?.name||''}"></div>
     <div class="form-row">
@@ -1711,12 +1715,12 @@ function hpSaveGroup() {
     const g=p.groups.find(x=>x.id===hpEditGid);
     Object.assign(g,{name,startDate,endDate:endDate||null,notes}); gId=hpEditGid;
   }
-  // Apply position assignments
-  document.querySelectorAll('input[data-pos]').forEach(inp=>{
+  // Apply position assignments — also set programId when linking via group modal
+  document.querySelectorAll('input[data-pos]:not([disabled])').forEach(inp=>{
     const pos=positions.find(x=>String(x.id)===String(inp.dataset.pos));
     if(!pos) return;
-    if(inp.checked) pos.groupId=gId;
-    else if(pos.groupId===gId) pos.groupId=null;
+    if(inp.checked){ pos.programId=hpCurrentId; pos.groupId=gId; }
+    else if(pos.programId===hpCurrentId&&pos.groupId===gId){ pos.groupId=null; }
   });
   hpCloseModal(); persist(); hpRenderDetail();
 }
