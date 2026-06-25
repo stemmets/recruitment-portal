@@ -1111,20 +1111,21 @@ function ssRenderDelivAndTimeline(s) {
   const times=milestones.map(m=>new Date(m.date+'T00:00:00').getTime());
   const minMs=Math.min(...times), maxMs=Math.max(...times), span=maxMs-minMs||1;
   // map to 3–97% to avoid clipping at edges
-  function toPct(d){return((new Date(d+'T00:00:00').getTime()-minMs)/span*94+3).toFixed(2);}
-  const todayRaw=(today.getTime()-minMs)/span*94+3;
-  const todayPct=Math.max(3,Math.min(97,todayRaw));
-  const showToday=todayRaw>=3&&todayRaw<=97;
+  function toPct(d){return((new Date(d+'T00:00:00').getTime()-minMs)/span*80+10).toFixed(2);}
+  const todayRaw=(today.getTime()-minMs)/span*80+10;
+  const todayPct=Math.max(10,Math.min(90,todayRaw));
+  const showToday=todayRaw>=10&&todayRaw<=90;
 
   const dots=milestones.map(m=>{
     const pct=toPct(m.date);
     const isPast=new Date(m.date+'T00:00:00')<=today;
     const dotBg=isPast?'var(--green)':'white';
     const dotBrd=isPast?'var(--green)':'var(--gray-300)';
-    return `<div style="position:absolute;left:${pct}%;top:0;transform:translateX(-50%);display:flex;flex-direction:column;align-items:center;width:80px;margin-left:-40px;">
-      <div style="width:12px;height:12px;border-radius:50%;background:${dotBg};border:2px solid ${dotBrd};flex-shrink:0"></div>
+    const tip=`${m.label}: ${fmt(m.date)}${m.count!=null?' · '+m.count.toLocaleString():''} ${m.notes?'\n'+m.notes:''}`.trim();
+    return `<div style="position:absolute;left:${pct}%;top:0;transform:translateX(-50%);display:flex;flex-direction:column;align-items:center;width:80px;">
+      <div title="${tip}" style="width:12px;height:12px;border-radius:50%;background:${dotBg};border:2px solid ${dotBrd};flex-shrink:0;cursor:default"></div>
       <div style="text-align:center;margin-top:6px;width:80px">
-        <div style="font-size:10px;font-weight:600;color:var(--gray-700);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${m.icon} ${m.label}</div>
+        <div style="font-size:10px;font-weight:600;color:var(--gray-700);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${m.label}</div>
         <div style="font-size:10px;color:${isPast?'var(--gray-400)':'var(--gray-600)'};margin-top:1px">${fmtShort(m.date)}</div>
         ${m.count!=null?`<div style="font-size:11px;font-weight:700;color:var(--green-dark);margin-top:2px">${m.count.toLocaleString()}</div>`:''}
       </div>
@@ -1132,7 +1133,7 @@ function ssRenderDelivAndTimeline(s) {
   }).join('');
 
   const todayLine=showToday?`<div style="position:absolute;left:${todayPct}%;top:0;width:2px;height:12px;background:#EF4444;transform:translateX(-50%)"></div>`:'';
-  const progressLine=showToday?`<div style="position:absolute;left:3%;width:${(todayPct-3).toFixed(2)}%;top:5px;height:2px;background:var(--green)"></div>`:'';
+  const progressLine=showToday?`<div style="position:absolute;left:10%;width:${(todayPct-10).toFixed(2)}%;top:5px;height:2px;background:var(--green)"></div>`:'';
 
   return `<div class="card" style="margin-bottom:16px">
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
@@ -1142,7 +1143,7 @@ function ssRenderDelivAndTimeline(s) {
     ${statsRow}
     <div style="overflow-x:auto">
       <div style="min-width:480px;position:relative">
-        <div style="position:absolute;left:3%;right:3%;top:5px;height:2px;background:var(--gray-200)"></div>
+        <div style="position:absolute;left:10%;right:10%;top:5px;height:2px;background:var(--gray-200)"></div>
         ${progressLine}
         <div style="position:relative;height:90px">${todayLine}${dots}</div>
       </div>
@@ -1372,7 +1373,7 @@ function saveStrategy() {
   const notes=document.getElementById('m-notes').value.trim();
   const verNote=document.getElementById('m-note')?.value?.trim()||'';
   if(ssModalMode==='new'){
-    strategies.forEach(s=>{if(s.status==='active')s.status='archived';});
+    strategies.forEach(s=>{if(s.status==='active'&&s.positionId===currentId)s.status='archived';});
     const ver=nextVer();
     strategies.push({id:Date.now(),version:ver,status:'active',positionId:currentId,createdAt:new Date().toISOString().slice(0,10),createdBy:'Sarah Park',modeId,deliverableValues,channels:[...formChannels],customChannels:[...formCustomChannels],compensation:comp,notes});
     toast(`✓ Strategy v${ver} saved — previous version archived`);
@@ -1497,8 +1498,20 @@ function hpPosRow(pos, groupTag) {
 
 function hpTimeline(p) {
   if(!p.groups.length) return `<div class="empty-state"><div class="es-icon">📅</div><div class="es-text">No groups yet</div><div class="es-sub">Add groups to visualize the program timeline</div></div>`;
-  const allDates=p.groups.flatMap(g=>[new Date(g.startDate+'T00:00:00'),g.endDate?new Date(g.endDate+'T00:00:00'):new Date(g.startDate+'T00:00:00')]);
-  let minD=new Date(Math.min(...allDates)), maxD=new Date(Math.max(...allDates));
+  // Date range: group dates + strategy milestone dates from linked portal positions
+  const groupDateObjs=p.groups.flatMap(g=>[new Date(g.startDate+'T00:00:00'),g.endDate?new Date(g.endDate+'T00:00:00'):new Date(g.startDate+'T00:00:00')]);
+  const linkedPosArr=positions.filter(pos=>pos.programId===p.id);
+  const stratDateObjs=linkedPosArr.flatMap(pos=>{
+    const strat=strategies.find(s=>s.status==='active'&&s.positionId===pos.id);
+    const mode=strat?getMode(strat.modeId):null;
+    if(!mode) return [];
+    return mode.deliverables.filter(d=>d.isTimeline).map(def=>{
+      const val=strat.deliverableValues.find(v=>v.id===def.id)||{};
+      return val.date?new Date(val.date+'T00:00:00'):null;
+    }).filter(Boolean);
+  });
+  const allDateObjs=[...groupDateObjs,...stratDateObjs];
+  let minD=new Date(Math.min(...allDateObjs)), maxD=new Date(Math.max(...allDateObjs));
   minD.setDate(minD.getDate()-6); maxD.setDate(maxD.getDate()+6);
   const totalMs=maxD-minD;
   function toPct(dateStr){const d=new Date(dateStr+'T00:00:00');return +((d-minD)/totalMs*100).toFixed(3);}
@@ -1508,19 +1521,46 @@ function hpTimeline(p) {
   const today=new Date(), todayPct=toPctD(today), showToday=todayPct>=0&&todayPct<=100;
   const monthLabels=months.map(m=>`<div style="position:absolute;left:${m.pct}%;transform:translateX(-50%);font-size:11px;color:var(--gray-400);white-space:nowrap">${m.label}</div>`).join('');
   const gridLines=months.map(m=>`<div style="position:absolute;left:${m.pct}%;top:0;bottom:0;width:1px;background:var(--gray-100)"></div>`).join('');
-  const ROW_H=34, ROW_GAP=6, barsH=p.groups.length*ROW_H+(p.groups.length-1)*ROW_GAP;
-  const bars=p.groups.map((g,i)=>{
+  const todayLine=showToday?`<div style="position:absolute;left:${todayPct}%;top:0;bottom:0;width:2px;background:#EF4444;opacity:0.75;z-index:10"></div><div style="position:absolute;left:calc(${todayPct}% + 4px);top:0;font-size:10px;color:#EF4444;font-weight:600;white-space:nowrap;z-index:11;line-height:20px">Today</div>`:'';
+  const ROW_H=34, ROW_GAP=6, MROW_H=24, MROW_GAP=4;
+  let barsRows=[], labelsRows=[], currentTop=0;
+  p.groups.forEach((g,i)=>{
     const color=GROUP_COLORS[i%GROUP_COLORS.length];
     const left=toPct(g.startDate), endStr=g.endDate||g.startDate, right=toPct(endStr);
-    const w=Math.max(right-left,1.5).toFixed(3), top=i*(ROW_H+ROW_GAP);
+    const w=Math.max(right-left,1.5).toFixed(3);
     const lbl=`${fmtShort(g.startDate)}${g.endDate&&g.endDate!==g.startDate?' – '+fmtShort(g.endDate):''} · ${g.positionIds.length}p`;
-    return `<div style="position:absolute;top:${top}px;left:${left}%;width:${w}%;height:${ROW_H}px;background:${color};border-radius:6px;display:flex;align-items:center;padding:0 10px;font-size:11px;font-weight:500;color:white;overflow:hidden;white-space:nowrap;cursor:default" title="${g.name}: ${lbl}">${lbl}</div>`;
-  }).join('');
-  const rowLabels=p.groups.map((g,i)=>{const top=i*(ROW_H+ROW_GAP);return `<div style="position:absolute;top:${top}px;height:${ROW_H}px;display:flex;align-items:center;justify-content:flex-end;font-size:12px;font-weight:500;color:var(--gray-700);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;padding-right:12px" title="${g.name}">${g.name}</div>`;}).join('');
-  const todayLine=showToday?`<div style="position:absolute;left:${todayPct}%;top:0;bottom:0;width:2px;background:#EF4444;opacity:0.75;z-index:10"></div><div style="position:absolute;left:calc(${todayPct}% + 4px);top:0;font-size:10px;color:#EF4444;font-weight:600;white-space:nowrap;z-index:11;line-height:20px">Today</div>`:'';
+    barsRows.push(`<div style="position:absolute;top:${currentTop}px;left:${left}%;width:${w}%;height:${ROW_H}px;background:${color};border-radius:6px;display:flex;align-items:center;padding:0 10px;font-size:11px;font-weight:500;color:white;overflow:hidden;white-space:nowrap;cursor:default" title="${g.name}: ${lbl}">${lbl}</div>`);
+    labelsRows.push(`<div style="position:absolute;top:${currentTop}px;height:${ROW_H}px;display:flex;align-items:center;justify-content:flex-end;font-size:12px;font-weight:500;color:var(--gray-700);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;padding-right:12px" title="${g.name}">${g.name}</div>`);
+    currentTop+=ROW_H+ROW_GAP;
+    // Strategy milestone rows for portal positions in this group
+    const linkedInGroup=positions.filter(pos=>pos.programId===p.id&&pos.groupId===g.id);
+    linkedInGroup.forEach(pos=>{
+      const strat=strategies.find(s=>s.status==='active'&&s.positionId===pos.id);
+      const mode=strat?getMode(strat.modeId):null;
+      if(!mode) return;
+      const milestones=mode.deliverables.filter(d=>d.isTimeline).map(def=>{
+        const val=strat.deliverableValues.find(v=>v.id===def.id)||{};
+        return val.date?{label:def.label,date:val.date,count:val.count??null}:null;
+      }).filter(Boolean);
+      if(!milestones.length) return;
+      const dots=milestones.map(m=>{
+        const mpct=toPct(m.date);
+        const isPast=new Date(m.date+'T00:00:00')<=today;
+        const tip=`${pos.pos}: ${m.label}${m.count!=null?' ('+m.count+')':''} — ${fmtShort(m.date)}`;
+        return `<div title="${tip}" style="position:absolute;left:${mpct}%;top:50%;transform:translate(-50%,-50%);width:8px;height:8px;border-radius:50%;background:${isPast?color:'white'};border:2px solid ${color};cursor:default;z-index:5;box-shadow:0 0 0 1px ${color}33"></div>`;
+      }).join('');
+      const firstPct=toPct(milestones[0].date), lastPct=toPct(milestones[milestones.length-1].date);
+      const lineW=Math.max(lastPct-firstPct,0).toFixed(3);
+      const connLine=`<div style="position:absolute;left:${firstPct}%;width:${lineW}%;top:50%;height:1px;background:${color};opacity:0.4;transform:translateY(-50%)"></div>`;
+      barsRows.push(`<div style="position:absolute;top:${currentTop}px;left:0;right:0;height:${MROW_H}px">${connLine}${dots}</div>`);
+      labelsRows.push(`<div style="position:absolute;top:${currentTop}px;height:${MROW_H}px;display:flex;align-items:center;justify-content:flex-end;font-size:10px;color:var(--gray-400);padding-right:12px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${pos.pos}">↳ ${pos.pos}</div>`);
+      currentTop+=MROW_H+MROW_GAP;
+    });
+  });
+  const barsH=Math.max(currentTop-ROW_GAP, ROW_H);
   return `<div style="overflow-x:auto"><div style="min-width:560px;display:grid;grid-template-columns:170px 1fr">
-    <div><div style="height:28px"></div><div style="position:relative;height:${barsH}px">${rowLabels}</div></div>
-    <div><div style="position:relative;height:28px;margin-bottom:4px">${monthLabels}</div><div style="position:relative;height:${barsH}px">${gridLines}${todayLine}${bars}</div></div>
+    <div><div style="height:28px"></div><div style="position:relative;height:${barsH}px">${labelsRows.join('')}</div></div>
+    <div><div style="position:relative;height:28px;margin-bottom:4px">${monthLabels}</div><div style="position:relative;height:${barsH}px">${gridLines}${todayLine}${barsRows.join('')}</div></div>
   </div></div>`;
 }
 
@@ -1529,20 +1569,43 @@ function hpRenderGroups(p) {
   return p.groups.map((g,i)=>{
     const color=GROUP_COLORS[i%GROUP_COLORS.length], isOpen=hpExpanded.has(g.id);
     const grpPositions=p.positions.filter(x=>g.positionIds.includes(x.id));
+    const portalInGroup=positions.filter(pos=>pos.programId===p.id&&pos.groupId===g.id);
+    const totalCount=grpPositions.length+portalInGroup.length;
+    const portalSection=portalInGroup.length?`<div style="margin-top:${grpPositions.length?'10px':'0'}">${portalInGroup.length&&grpPositions.length?`<div style="font-size:11px;font-weight:600;color:var(--gray-400);text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px">Portal Positions</div>`:''}${portalInGroup.map(pos=>{
+      const strat=strategies.find(s=>s.status==='active'&&s.positionId===pos.id);
+      const mode=strat?getMode(strat.modeId):null;
+      const keyDates=mode?mode.deliverables.filter(d=>d.isTimeline).map(def=>{
+        const val=strat.deliverableValues.find(v=>v.id===def.id)||{};
+        return val.date?`<span style="display:inline-flex;align-items:center;gap:3px">${def.icon} ${def.label}: <strong>${fmtShort(val.date)}</strong></span>`:null;
+      }).filter(Boolean):[];
+      return `<div style="display:flex;align-items:flex-start;gap:10px;padding:8px 10px;background:var(--gray-50);border-radius:6px;margin-bottom:4px;font-size:12px;">
+        <div style="flex:1;min-width:0">
+          <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">
+            <span style="font-weight:500;color:var(--gray-800)">${pos.pos}</span>
+            <span class="badge ${pos.status==='Draft'?'b-draft':pos.status==='In Progress'?'b-progress':'b-completed'}">${pos.status}</span>
+            ${strat?`<span style="font-size:10px;background:var(--green-light,#dcfce7);color:var(--green-dark,#166534);padding:1px 6px;border-radius:8px;font-weight:500">v${strat.version} strategy</span>`:``}
+          </div>
+          ${keyDates.length?`<div style="color:var(--gray-500);margin-top:4px;display:flex;flex-wrap:wrap;gap:8px">${keyDates.join('')}</div>`:'<div style="color:var(--gray-400);font-size:11px;margin-top:3px">No strategy yet</div>'}
+        </div>
+        <button class="btn btn-ghost btn-sm" style="flex-shrink:0" onclick="nav('detail',${pos.id})">Open →</button>
+      </div>`;
+    }).join('')}</div>`:'';
     return `<div class="group-card" id="gc-${g.id}">
       <div class="group-hd" onclick="hpToggleGroup('${g.id}')">
         <div class="group-dot" style="background:${color}"></div>
         <div class="group-title">${g.name}</div>
         <div style="display:flex;align-items:center;gap:12px">
           <div class="group-dates">${fmtShort(g.startDate)}${g.endDate&&g.endDate!==g.startDate?' – '+fmtShort(g.endDate):''}</div>
-          <div class="group-count">${grpPositions.length} position${grpPositions.length!==1?'s':''}</div>
+          <div class="group-count">${totalCount} position${totalCount!==1?'s':''}</div>
           <button class="btn btn-ghost btn-sm" onclick="event.stopPropagation();hpGroupModal('edit','${g.id}')">Edit</button>
           <svg class="chevron ${isOpen?'open':''}" width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M4 6l4 4 4-4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
         </div>
       </div>
       ${isOpen?`<div class="group-body">
         ${g.notes?`<div class="group-notes">💬 ${g.notes}</div>`:''}
-        ${grpPositions.length?`<div class="hp-pos-list">${grpPositions.map(x=>hpPosRow(x)).join('')}</div>`:`<div style="padding:12px 0;color:var(--gray-400);font-size:13px;text-align:center">No positions assigned yet</div>`}
+        ${grpPositions.length?`<div class="hp-pos-list">${grpPositions.map(x=>hpPosRow(x)).join('')}</div>`:''}
+        ${portalSection}
+        ${!grpPositions.length&&!portalInGroup.length?`<div style="padding:12px 0;color:var(--gray-400);font-size:13px;text-align:center">No positions assigned yet</div>`:''}
       </div>`:''}
     </div>`;
   }).join('');
