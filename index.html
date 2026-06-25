@@ -237,9 +237,6 @@ textarea { resize: vertical; min-height: 80px; }
 .chevron { transition: transform 0.2s; color: var(--gray-400); } .chevron.open { transform: rotate(180deg); }
 .group-body { padding: 0 16px 14px; border-top: 1px solid var(--gray-100); }
 .group-notes { font-size: 12px; color: var(--gray-500); padding: 10px 0 12px; font-style: italic; border-bottom: 1px solid var(--gray-100); margin-bottom: 10px; }
-.hp-pos-list { display: flex; flex-direction: column; gap: 6px; }
-.hp-pos-row { display: flex; align-items: center; justify-content: space-between; padding: 8px 12px; background: var(--gray-50); border-radius: 6px; }
-.hp-pos-title { font-size: 13px; font-weight: 500; } .hp-pos-meta { font-size: 12px; color: var(--gray-500); margin-top: 1px; }
 .hp-modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.4); z-index: 100; display: flex; align-items: center; justify-content: center; padding: 20px; }
 .hp-modal-overlay.hidden { display: none; }
 .hp-modal-dialog { background: white; border-radius: 12px; width: 100%; max-width: 520px; max-height: 90vh; overflow-y: auto; box-shadow: 0 20px 60px rgba(0,0,0,0.2); }
@@ -646,37 +643,19 @@ let programs = [
     description:'Bulk hiring for Retail POS system rollout across Q1. Four groups with staggered start dates covering .NET, QA, PM, BA and design roles.\n\nShared interviewers: Pablo Zalazar (Tech Lead), Natalia K. (Domain Expert), Yurii Prokhoriatov (Solution Architect).\n\nProcess notes: .NET candidates may be considered across positions. All external interviews require Pablo on the panel. Pre-screen call required before presenting CV to client.',
     createdAt:'2026-01-15',
     groups:[
-      {id:'g1',name:'Wave 1',    startDate:'2026-03-02',endDate:'2026-03-08',positionIds:['p1','p2','p3'],notes:'Core team — backend + PM. Critical path for client go-live.'},
-      {id:'g2',name:'Wave 2',    startDate:'2026-03-09',endDate:'2026-03-15',positionIds:['p4','p5'],notes:''},
-      {id:'g3',name:'Wave 3',    startDate:'2026-03-16',endDate:'2026-03-22',positionIds:['p6','p7'],notes:''},
-      {id:'g4',name:'Wave 4 — No HM at Client Side',startDate:'2026-03-23',endDate:'2026-03-31',positionIds:['p8'],notes:"HM (John) is on vacation Mar 23–28. Screen-only phase — no client-side interviews. Move offer decisions to after Apr 1."},
-    ],
-    positions:[
-      {id:'p1',title:'.NET Developer',          seniority:'S1',    count:2,status:'In Progress'},
-      {id:'p2',title:'Project Manager',          seniority:'I2',    count:1,status:'In Progress'},
-      {id:'p3',title:'QA Automation Engineer',   seniority:'I1',    count:1,status:'Draft'},
-      {id:'p4',title:'.NET Developer',           seniority:'S1',    count:2,status:'Draft'},
-      {id:'p5',title:'Business Analyst',         seniority:'I2',    count:1,status:'Draft'},
-      {id:'p6',title:'.NET Developer',           seniority:'I2',    count:2,status:'Draft'},
-      {id:'p7',title:'DevOps Engineer',          seniority:'S1',    count:1,status:'Draft'},
-      {id:'p8',title:'UI/UX Designer',           seniority:'Junior',count:1,status:'Draft'},
+      {id:'g1',name:'Wave 1',    startDate:'2026-03-02',endDate:'2026-03-08',notes:'Core team — backend + PM. Critical path for client go-live.'},
+      {id:'g2',name:'Wave 2',    startDate:'2026-03-09',endDate:'2026-03-15',notes:''},
+      {id:'g3',name:'Wave 3',    startDate:'2026-03-16',endDate:'2026-03-22',notes:''},
+      {id:'g4',name:'Wave 4 — No HM at Client Side',startDate:'2026-03-23',endDate:'2026-03-31',notes:"HM (John) is on vacation Mar 23–28. Screen-only phase — no client-side interviews. Move offer decisions to after Apr 1."},
     ],
     history:[{
       version:1, archivedAt:'2026-02-10', archivedBy:'Sarah Park',
       versionNote:'Initial plan — 3 waves, 6 positions. Revised to 4 waves after client requested staggered onboarding for Wave 4 (HM absence).',
       description:'Bulk hiring for Retail POS system rollout. Initial plan with 3 deployment waves.',
       groups:[
-        {id:'g1',name:'Wave 1',startDate:'2026-03-02',endDate:'2026-03-08',positionIds:['p1','p2']},
-        {id:'g2',name:'Wave 2',startDate:'2026-03-09',endDate:'2026-03-15',positionIds:['p3','p4','p5']},
-        {id:'g3',name:'Wave 3',startDate:'2026-03-16',endDate:'2026-03-22',positionIds:['p6']},
-      ],
-      positions:[
-        {id:'p1',title:'.NET Developer',seniority:'S1',count:2,status:'Draft'},
-        {id:'p2',title:'Project Manager',seniority:'I2',count:1,status:'Draft'},
-        {id:'p3',title:'.NET Developer',seniority:'S1',count:2,status:'Draft'},
-        {id:'p4',title:'Business Analyst',seniority:'I2',count:1,status:'Draft'},
-        {id:'p5',title:'.NET Developer',seniority:'I2',count:2,status:'Draft'},
-        {id:'p6',title:'DevOps Engineer',seniority:'S1',count:1,status:'Draft'},
+        {id:'g1',name:'Wave 1',startDate:'2026-03-02',endDate:'2026-03-08'},
+        {id:'g2',name:'Wave 2',startDate:'2026-03-09',endDate:'2026-03-15'},
+        {id:'g3',name:'Wave 3',startDate:'2026-03-16',endDate:'2026-03-22'},
       ]
     }]
   },
@@ -686,18 +665,34 @@ let programs = [
     description:'Scaling the platform team for new banking compliance module. Two phases: core team foundation, then scale-up.\n\nShared interviewers: Elena Marchetti (CTO), David Chen (Tech Lead).\n\nProcess notes: Financial domain background preferred. Security clearance check required before offer stage — coordinate with HR compliance team.',
     createdAt:'2026-02-01',
     groups:[
-      {id:'h1',name:'Phase 1 — Core Team',startDate:'2026-04-01',endDate:'2026-04-30',positionIds:['q1','q2'],notes:'Foundation roles. Must be onboarded and ramped before Phase 2 kick-off.'},
-      {id:'h2',name:'Phase 2 — Scale-Up', startDate:'2026-05-15',endDate:'2026-06-30',positionIds:['q3','q4'],notes:''},
-    ],
-    positions:[
-      {id:'q1',title:'Java Developer',      seniority:'S1',count:3,status:'In Progress'},
-      {id:'q2',title:'Solution Architect',  seniority:'S2',count:1,status:'In Progress'},
-      {id:'q3',title:'Java Developer',      seniority:'I2',count:2,status:'Draft'},
-      {id:'q4',title:'DevOps Engineer',     seniority:'S1',count:1,status:'Draft'},
+      {id:'h1',name:'Phase 1 — Core Team',startDate:'2026-04-01',endDate:'2026-04-30',notes:'Foundation roles. Must be onboarded and ramped before Phase 2 kick-off.'},
+      {id:'h2',name:'Phase 2 — Scale-Up', startDate:'2026-05-15',endDate:'2026-06-30',notes:''},
     ],
     history:[]
   }
 ];
+
+/* ══════════════════════════════════════════════
+   PERSISTENCE
+══════════════════════════════════════════════ */
+function persist() {
+  try {
+    localStorage.setItem('rp_strategies', JSON.stringify(strategies));
+    localStorage.setItem('rp_positions',  JSON.stringify(positions));
+    localStorage.setItem('rp_programs',   JSON.stringify(programs));
+  } catch(e) { console.warn('persist failed', e); }
+}
+function loadPersisted() {
+  try {
+    const s=localStorage.getItem('rp_strategies');
+    const p=localStorage.getItem('rp_positions');
+    const g=localStorage.getItem('rp_programs');
+    if(s) strategies=JSON.parse(s);
+    if(p) positions=JSON.parse(p);
+    if(g) programs=JSON.parse(g);
+  } catch(e) { console.warn('loadPersisted failed', e); }
+}
+loadPersisted();
 
 /* ══════════════════════════════════════════════
    STATE
@@ -1382,7 +1377,7 @@ function saveStrategy() {
     if(idx>=0) strategies[idx]={...strategies[idx],modeId,deliverableValues,channels:[...formChannels],customChannels:[...formCustomChannels],compensation:comp,notes};
     toast('✓ Strategy updated');
   }
-  ssCloseModal(); ssRender();
+  ssCloseModal(); ssRender(); persist();
 }
 
 /* ══════════════════════════════════════════════
@@ -1411,7 +1406,7 @@ function hpRenderList() {
   }
   grid.innerHTML=programs.map(p=>{
     const range=getProgramRange(p);
-    const ftes=p.positions.reduce((s,x)=>s+x.count,0);
+    const linked=positions.filter(x=>x.programId===p.id).length;
     return `
     <div class="card program-card" onclick="hpShowDetail('${p.id}')">
       <div class="program-card-header">
@@ -1425,8 +1420,7 @@ function hpRenderList() {
       ${range?`<div style="font-size:12px;color:var(--gray-400);margin-top:6px;display:flex;align-items:center;gap:4px">📅 ${fmtShort(range.min)} – ${fmtShort(range.max)}</div>`:''}
       <div class="program-stats">
         <div class="stat-item"><div class="stat-val">${p.groups.length}</div><div class="stat-lbl">Groups</div></div>
-        <div class="stat-item"><div class="stat-val">${p.positions.length}</div><div class="stat-lbl">Positions</div></div>
-        <div class="stat-item"><div class="stat-val">${ftes}</div><div class="stat-lbl">FTEs</div></div>
+        <div class="stat-item"><div class="stat-val">${linked}</div><div class="stat-lbl">Positions</div></div>
       </div>
     </div>`;
   }).join('');
@@ -1434,7 +1428,7 @@ function hpRenderList() {
 
 function hpRenderDetail() {
   const p=programs.find(x=>x.id===hpCurrentId); if(!p) return;
-  const ftes=p.positions.reduce((s,x)=>s+x.count,0);
+  const linked=positions.filter(x=>x.programId===p.id).length;
   const descLines=(p.description||'').split('\n').map(l=>l.trim()).filter(Boolean);
   document.getElementById('hp-detail-content').innerHTML=`
     <div class="card" style="margin-bottom:16px">
@@ -1459,8 +1453,7 @@ function hpRenderDetail() {
     </div>
     <div class="stats-row">
       <div class="stats-card"><div class="stat-lbl">Groups</div><div class="stat-val">${p.groups.length}</div></div>
-      <div class="stats-card"><div class="stat-lbl">Positions</div><div class="stat-val">${p.positions.length}</div></div>
-      <div class="stats-card"><div class="stat-lbl">Total FTEs</div><div class="stat-val">${ftes}</div></div>
+      <div class="stats-card"><div class="stat-lbl">Positions</div><div class="stat-val">${linked}</div></div>
     </div>
     <div class="section">
       <div class="section-hd"><div class="section-title">Timeline</div></div>
@@ -1483,18 +1476,6 @@ function hpRenderDetail() {
     </div>`;
 }
 
-function hpPosRow(pos, groupTag) {
-  return `<div class="hp-pos-row">
-    <div>
-      <div class="hp-pos-title">${pos.title}</div>
-      <div class="hp-pos-meta">${pos.seniority} · ${pos.count} FTE${pos.count!==1?'s':''}</div>
-    </div>
-    <div style="display:flex;align-items:center;gap:8px">
-      ${groupTag?`<span style="font-size:11px;color:var(--gray-400)">${groupTag}</span>`:''}
-      ${hpBadge(pos.status)}
-    </div>
-  </div>`;
-}
 
 function hpTimeline(p) {
   if(!p.groups.length) return `<div class="empty-state"><div class="es-icon">📅</div><div class="es-text">No groups yet</div><div class="es-sub">Add groups to visualize the program timeline</div></div>`;
@@ -1528,7 +1509,8 @@ function hpTimeline(p) {
     const color=GROUP_COLORS[i%GROUP_COLORS.length];
     const left=toPct(g.startDate), endStr=g.endDate||g.startDate, right=toPct(endStr);
     const w=Math.max(right-left,1.5).toFixed(3);
-    const lbl=`${fmtShort(g.startDate)}${g.endDate&&g.endDate!==g.startDate?' – '+fmtShort(g.endDate):''} · ${g.positionIds.length}p`;
+    const groupPortalCount=positions.filter(pos=>pos.programId===p.id&&pos.groupId===g.id).length;
+    const lbl=`${fmtShort(g.startDate)}${g.endDate&&g.endDate!==g.startDate?' – '+fmtShort(g.endDate):''}${groupPortalCount?' · '+groupPortalCount+'p':''}`;
     barsRows.push(`<div style="position:absolute;top:${currentTop}px;left:${left}%;width:${w}%;height:${ROW_H}px;background:${color};border-radius:6px;display:flex;align-items:center;padding:0 10px;font-size:11px;font-weight:500;color:white;overflow:hidden;white-space:nowrap;cursor:default" title="${g.name}: ${lbl}">${lbl}</div>`);
     labelsRows.push(`<div style="position:absolute;top:${currentTop}px;height:${ROW_H}px;display:flex;align-items:center;justify-content:flex-end;font-size:12px;font-weight:500;color:var(--gray-700);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;padding-right:12px" title="${g.name}">${g.name}</div>`);
     currentTop+=ROW_H+ROW_GAP;
@@ -1568,10 +1550,9 @@ function hpRenderGroups(p) {
   if(!p.groups.length) return `<div class="card"><div class="empty-state" style="padding:20px"><div class="es-text">No groups yet</div><div class="es-sub">Organize positions into named groups with target dates</div></div></div>`;
   return p.groups.map((g,i)=>{
     const color=GROUP_COLORS[i%GROUP_COLORS.length], isOpen=hpExpanded.has(g.id);
-    const grpPositions=p.positions.filter(x=>g.positionIds.includes(x.id));
     const portalInGroup=positions.filter(pos=>pos.programId===p.id&&pos.groupId===g.id);
-    const totalCount=grpPositions.length+portalInGroup.length;
-    const portalSection=portalInGroup.length?`<div style="margin-top:${grpPositions.length?'10px':'0'}">${portalInGroup.length&&grpPositions.length?`<div style="font-size:11px;font-weight:600;color:var(--gray-400);text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px">Portal Positions</div>`:''}${portalInGroup.map(pos=>{
+    const totalCount=portalInGroup.length;
+    const portalSection=portalInGroup.length?`<div>${portalInGroup.map(pos=>{
       const strat=strategies.find(s=>s.status==='active'&&s.positionId===pos.id);
       const mode=strat?getMode(strat.modeId):null;
       const keyDates=mode?mode.deliverables.filter(d=>d.isTimeline).map(def=>{
@@ -1603,9 +1584,8 @@ function hpRenderGroups(p) {
       </div>
       ${isOpen?`<div class="group-body">
         ${g.notes?`<div class="group-notes">💬 ${g.notes}</div>`:''}
-        ${grpPositions.length?`<div class="hp-pos-list">${grpPositions.map(x=>hpPosRow(x)).join('')}</div>`:''}
         ${portalSection}
-        ${!grpPositions.length&&!portalInGroup.length?`<div style="padding:12px 0;color:var(--gray-400);font-size:13px;text-align:center">No positions assigned yet</div>`:''}
+        ${!portalInGroup.length?`<div style="padding:12px 0;color:var(--gray-400);font-size:13px;text-align:center">No positions linked yet</div>`:''}
       </div>`:''}
     </div>`;
   }).join('');
@@ -1617,7 +1597,6 @@ function hpRenderHistory(p) {
   const hist=p.history||[];
   if(!hist.length) return `<div class="card"><div style="font-size:13px;color:var(--gray-400);padding:12px 0;text-align:center">No previous versions — this is the first version of the program.</div></div>`;
   const entries=hist.slice().reverse().map(h=>{
-    const ftes=(h.positions||[]).reduce((s,x)=>s+x.count,0);
     const key=`hist_${p.id}_v${h.version}`;
     return `<div style="border:1px solid var(--gray-200);border-radius:8px;overflow:hidden;margin-bottom:8px">
       <div style="padding:12px 16px;display:flex;align-items:center;gap:10px;cursor:pointer;background:var(--gray-50)" onclick="hpToggleHist('${key}')">
@@ -1627,10 +1606,8 @@ function hpRenderHistory(p) {
       </div>
       <div id="${key}" style="display:none;padding:14px 16px;border-top:1px solid var(--gray-200)">
         ${h.description?`<div style="font-size:13px;color:var(--gray-600);line-height:1.6;margin-bottom:12px">${h.description.split('\n')[0]}</div>`:''}
-        <div style="display:flex;gap:20px;font-size:12px;color:var(--gray-500);margin-bottom:${h.groups&&h.groups.length?10:0}px">
-          <span>📁 ${(h.groups||[]).length} groups</span><span>👤 ${(h.positions||[]).length} positions</span><span>🎯 ${ftes} FTEs</span>
-        </div>
-        ${h.groups&&h.groups.length?`<div style="font-size:12px;color:var(--gray-500);line-height:1.8">${h.groups.map((g,i)=>{const color=GROUP_COLORS[i%GROUP_COLORS.length];return `<span style="display:inline-flex;align-items:center;gap:5px;margin-right:14px"><span style="width:8px;height:8px;border-radius:50%;background:${color};display:inline-block"></span>${g.name}: ${fmtShort(g.startDate)}${g.endDate?'–'+fmtShort(g.endDate):''} (${g.positionIds.length}p)</span>`;}).join('')}</div>`:''}
+        <div style="font-size:12px;color:var(--gray-500);margin-bottom:${h.groups&&h.groups.length?10:0}px">📁 ${(h.groups||[]).length} groups</div>
+        ${h.groups&&h.groups.length?`<div style="font-size:12px;color:var(--gray-500);line-height:1.8">${h.groups.map((g,i)=>{const color=GROUP_COLORS[i%GROUP_COLORS.length];return `<span style="display:inline-flex;align-items:center;gap:5px;margin-right:14px"><span style="width:8px;height:8px;border-radius:50%;background:${color};display:inline-block"></span>${g.name}: ${fmtShort(g.startDate)}${g.endDate?'–'+fmtShort(g.endDate):''}</span>`;}).join('')}</div>`:''}
       </div>
     </div>`;
   }).join('');
@@ -1671,11 +1648,11 @@ function hpSaveProgram() {
   const ini=smInitials(smName), col=smColor(ini);
   if(hpModalMode==='new-program'){
     const np={id:uid(),name,account,description:desc,sm:{name:smName,initials:ini,color:col},createdAt:new Date().toISOString().slice(0,10),groups:[],positions:[],history:[]};
-    programs.push(np); hpCloseModal(); hpShowDetail(np.id);
+    programs.push(np); hpCloseModal(); persist(); hpShowDetail(np.id);
   } else {
     const p=programs.find(x=>x.id===hpCurrentId);
     Object.assign(p,{name,account,description:desc,sm:{name:smName,initials:ini,color:col}});
-    hpCloseModal(); hpRenderDetail();
+    hpCloseModal(); persist(); hpRenderDetail();
   }
 }
 
@@ -1684,17 +1661,13 @@ function hpGroupModal(mode,gid) {
   hpModalMode=mode==='edit'?'edit-group':'new-group'; hpEditGid=gid;
   const p=programs.find(x=>x.id===hpCurrentId);
   const g=gid?p.groups.find(x=>x.id===gid):null;
-  const checkboxes=p.positions.length
-    ?`<div class="pos-checklist">${p.positions.map(pos=>`<label class="pos-check-item"><input type="checkbox" value="${pos.id}" ${g?.positionIds?.includes(pos.id)?'checked':''}><div style="flex:1"><div style="font-size:13px;font-weight:500">${pos.title}</div><div style="font-size:12px;color:var(--gray-500)">${pos.seniority} · ${pos.count} FTE${pos.count!==1?'s':''}</div></div>${hpBadge(pos.status)}</label>`).join('')}</div>`
-    :`<div style="font-size:12px;color:var(--gray-400);padding:10px 0">Add positions to the program first to assign them to this group.</div>`;
   const body=`
     <div class="fg"><label class="fl">Group Name *</label><input class="fi" id="m-gname" placeholder='e.g. "Wave 1", "Phase 2"...' value="${g?.name||''}"></div>
     <div class="form-row">
       <div class="fg"><label class="fl">Start Date *</label><input class="fi" type="date" id="m-gstart" value="${g?.startDate||''}"></div>
       <div class="fg"><label class="fl">End Date</label><input class="fi" type="date" id="m-gend" value="${g?.endDate||''}"></div>
     </div>
-    <div class="fg"><label class="fl">Notes</label><textarea class="fta" id="m-gnotes" placeholder="Context, constraints...">${g?.notes||''}</textarea></div>
-    <div class="fg"><label class="fl">Positions in this Group</label>${checkboxes}</div>`;
+    <div class="fg"><label class="fl">Notes</label><textarea class="fta" id="m-gnotes" placeholder="Context, constraints...">${g?.notes||''}</textarea></div>`;
   hpOpenModal(mode==='edit'?'Edit Group':'Add Group',body,hpSaveGroup);
 }
 
@@ -1704,43 +1677,15 @@ function hpSaveGroup() {
   const endDate=document.getElementById('m-gend').value;
   const notes=document.getElementById('m-gnotes').value.trim();
   if(!name||!startDate){alert('Group name and start date are required.');return;}
-  const checked=[...document.querySelectorAll('.pos-checklist input:checked')].map(el=>el.value);
   const p=programs.find(x=>x.id===hpCurrentId);
   if(hpModalMode==='new-group'){
-    const ng={id:uid(),name,startDate,endDate:endDate||null,notes,positionIds:checked};
+    const ng={id:uid(),name,startDate,endDate:endDate||null,notes};
     p.groups.push(ng); hpExpanded.add(ng.id);
   } else {
     const g=p.groups.find(x=>x.id===hpEditGid);
-    Object.assign(g,{name,startDate,endDate:endDate||null,notes,positionIds:checked});
+    Object.assign(g,{name,startDate,endDate:endDate||null,notes});
   }
-  hpCloseModal(); hpRenderDetail();
-}
-
-/* HP Position modal */
-const ROLES=['.NET Developer','Java Developer','Frontend Developer','React Developer','Node.js Developer','Python Developer','Solution Architect','DevOps Engineer','QA Automation Engineer','Business Analyst','Project Manager','UI/UX Designer','Data Engineer','Data Scientist','Mobile Developer (iOS)','Mobile Developer (Android)','Security Engineer'];
-
-function hpPositionModal() {
-  hpModalMode='new-position';
-  const body=`
-    <div class="fg"><label class="fl">Position *</label>
-    <select class="fs" id="m-ptitle"><option value="">Select...</option>${ROLES.map(r=>`<option>${r}</option>`).join('')}</select></div>
-    <div class="form-row">
-      <div class="fg"><label class="fl">Seniority *</label><select class="fs" id="m-psen"><option>Junior</option><option>I1</option><option>I2</option><option selected>S1</option><option>S2</option></select></div>
-      <div class="fg"><label class="fl">FTEs *</label><input class="fi" type="number" id="m-pcnt" min="1" value="1"></div>
-    </div>
-    <div class="fg"><label class="fl">Status</label><select class="fs" id="m-pstat"><option>Draft</option><option>In Progress</option></select></div>`;
-  hpOpenModal('Add Position',body,hpSavePosition);
-}
-
-function hpSavePosition() {
-  const title=document.getElementById('m-ptitle').value;
-  const seniority=document.getElementById('m-psen').value;
-  const count=parseInt(document.getElementById('m-pcnt').value)||1;
-  const status=document.getElementById('m-pstat').value;
-  if(!title){alert('Please select a position.');return;}
-  const p=programs.find(x=>x.id===hpCurrentId);
-  p.positions.push({id:uid(),title,seniority,count,status});
-  hpCloseModal(); hpRenderDetail();
+  hpCloseModal(); persist(); hpRenderDetail();
 }
 
 /* HP New Version modal */
@@ -1759,10 +1704,10 @@ function hpSaveNewVersion() {
   const note=document.getElementById('m-vnote').value.trim();
   if(!note){alert('Please describe what changed in this version.');return;}
   const p=programs.find(x=>x.id===hpCurrentId);
-  const snapshot={version:p.version||1,archivedAt:new Date().toISOString().slice(0,10),archivedBy:p.sm.name,versionNote:note,description:p.description,groups:JSON.parse(JSON.stringify(p.groups)),positions:JSON.parse(JSON.stringify(p.positions))};
+  const snapshot={version:p.version||1,archivedAt:new Date().toISOString().slice(0,10),archivedBy:p.sm.name,versionNote:note,description:p.description,groups:JSON.parse(JSON.stringify(p.groups))};
   p.history=p.history||[]; p.history.push(snapshot);
   p.version=(p.version||1)+1;
-  hpCloseModal(); hpRenderDetail();
+  hpCloseModal(); persist(); hpRenderDetail();
 }
 
 /* ══════════════════════════════════════════════
@@ -1838,7 +1783,7 @@ function hpSaveLinkPosition() {
   if (!posId) { alert('Please select a position.'); return; }
   const p = positions.find(x => x.id === posId);
   if (p) { p.programId = hpCurrentId; p.groupId = groupId; }
-  hpCloseModal(); hpRenderDetail();
+  hpCloseModal(); persist(); hpRenderDetail();
   toast('✓ Position linked to program');
 }
 
@@ -1893,7 +1838,7 @@ function saveProgramAssign() {
   const groupId = document.getElementById('pa-group')?.value || null;
   const p = positions.find(x => x.id === currentId);
   if (p) { p.programId = progId; p.groupId = groupId || null; }
-  hpCloseModal();
+  hpCloseModal(); persist();
   openPos(currentId); // refresh General tab fields
   toast(progId ? '✓ Position linked to program' : '✓ Program assignment removed');
 }
