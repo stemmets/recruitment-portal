@@ -450,6 +450,7 @@ textarea { resize: vertical; min-height: 80px; }
             <div class="detail-row"><span class="d-label">Number of People</span><span class="d-val" id="d-cnt">–</span></div>
             <div class="detail-row"><span class="d-label">Location</span><span class="d-val" id="d-loc">–</span></div>
             <div class="detail-row"><span class="d-label">Type of Cooperation</span><span class="d-val">Outstaff</span></div>
+            <div class="detail-row"><span class="d-label">Hiring Program</span><span class="d-val" id="d-program">–</span></div>
           </div>
           <div class="detail-section">
             <div class="detail-section-title">Timeline</div>
@@ -600,14 +601,22 @@ const COOPERATION_MODES = [
   },
 ];
 
-const PROGRAM_CONTEXT = {
-  programId: 'rpos2026',
-  name: 'Retail POS Q1 2026',
-  account: "Mario's Retail Chain",
-  groupName: 'Wave 2',
-  startDate: '2026-03-09',
-  endDate: '2026-03-15'
-};
+// PROGRAM_CONTEXT is now dynamic — resolved from the current position
+function getProgramContext() {
+  const p = positions.find(x => x.id === currentId);
+  if (!p || !p.programId) return null;
+  const prog = programs.find(x => x.id === p.programId);
+  if (!prog) return null;
+  const grp = prog.groups.find(g => g.id === p.groupId) || null;
+  return {
+    programId: prog.id,
+    name: prog.name,
+    account: prog.account,
+    groupName: grp ? grp.name : '—',
+    startDate: grp ? grp.startDate : prog.createdAt,
+    endDate: grp ? (grp.endDate || grp.startDate) : prog.createdAt,
+  };
+}
 
 const CHANNELS_ADMIN = ['LinkedIn','Djinni','Indeed','Referral','Internal DB','HeadHunter'];
 const POS_LOCATIONS  = ['Ukraine','Poland'];
@@ -616,10 +625,10 @@ const POS_LOCATIONS  = ['Ukraine','Poland'];
    POSITIONS DATA
 ══════════════════════════════════════════════ */
 let positions = [
-  { id:1, pos:'Software Engineer',           lvl:['Senior (S1)'],                         tech:['React','TypeScript','CSS/Tailwind'], cnt:1, locs:['Poland','Germany'],  status:'Draft',       sm:'Sarah Park', rec:['Maria Chen','Polina Nekrasova'], exp:'2026-06-01', est:'Jul 29, 2026', cmt:'' },
-  { id:2, pos:'Business Analyst',            lvl:['Intermediate (I1)','Intermediate (I2)'],tech:['BA'],                               cnt:1, locs:['Ukraine'],          status:'In Progress', sm:'Sarah Park', rec:['Maria Chen','Polina Nekrasova'], exp:'2026-06-01', est:'Jun 20, 2026', cmt:'' },
-  { id:3, pos:'Quality Automation Engineer', lvl:['Intermediate (I1)'],                   tech:['Testing','TypeScript'],              cnt:1, locs:['Brazil'],           status:'Cancelled',   sm:'-',          rec:['-'],                             exp:'2026-04-01', est:'Apr 15, 2026', cmt:'' },
-  { id:4, pos:'UI/UX Designer',              lvl:['Junior'],                              tech:['UX/UI Designer'],                    cnt:1, locs:['Poland','Germany'],  status:'Completed',   sm:'Sarah Park', rec:['Thomas Weber'],                  exp:'2025-03-01', est:'Mar 15, 2025', cmt:'' },
+  { id:1, pos:'Software Engineer',           lvl:['Senior (S1)'],                         tech:['React','TypeScript','CSS/Tailwind'], cnt:1, locs:['Poland','Germany'],  status:'Draft',       sm:'Sarah Park', rec:['Maria Chen','Polina Nekrasova'], exp:'2026-06-01', est:'Jul 29, 2026', cmt:'', programId:null, groupId:null },
+  { id:2, pos:'Business Analyst',            lvl:['Intermediate (I1)','Intermediate (I2)'],tech:['BA'],                               cnt:1, locs:['Ukraine'],          status:'In Progress', sm:'Sarah Park', rec:['Maria Chen','Polina Nekrasova'], exp:'2026-06-01', est:'Jun 20, 2026', cmt:'', programId:'rpos2026', groupId:'g2' },
+  { id:3, pos:'Quality Automation Engineer', lvl:['Intermediate (I1)'],                   tech:['Testing','TypeScript'],              cnt:1, locs:['Brazil'],           status:'Cancelled',   sm:'-',          rec:['-'],                             exp:'2026-04-01', est:'Apr 15, 2026', cmt:'', programId:null, groupId:null },
+  { id:4, pos:'UI/UX Designer',              lvl:['Junior'],                              tech:['UX/UI Designer'],                    cnt:1, locs:['Poland','Germany'],  status:'Completed',   sm:'Sarah Park', rec:['Thomas Weber'],                  exp:'2025-03-01', est:'Mar 15, 2025', cmt:'', programId:null, groupId:null },
 ];
 
 /* ══════════════════════════════════════════════
@@ -965,6 +974,16 @@ function openPos(id) {
   document.getElementById('d-exp').textContent = p.exp;
   document.getElementById('d-est').textContent = p.est;
   document.getElementById('d-cmt').textContent = p.cmt||'–';
+  const progEl = document.getElementById('d-program');
+  if (p.programId) {
+    const prog = programs.find(x=>x.id===p.programId);
+    const grp  = prog?.groups.find(g=>g.id===p.groupId);
+    progEl.innerHTML = prog
+      ? `<span style="cursor:pointer;color:var(--green-dark);font-weight:500;" onclick="nav('programs-detail','${prog.id}')">${prog.name}</span>${grp?` <span style="font-size:12px;color:var(--gray-400);">· ${grp.name}</span>`:''} <button onclick="openProgramAssignModal()" style="margin-left:6px;font-size:11px;color:var(--gray-400);border:1px solid var(--gray-200);border-radius:5px;padding:2px 7px;background:white;cursor:pointer;">change</button>`
+      : '–';
+  } else {
+    progEl.innerHTML = `<span style="color:var(--gray-400);">Not assigned</span> <button onclick="openProgramAssignModal()" style="margin-left:6px;font-size:11px;color:var(--green-dark);border:1px solid #A7F3D0;border-radius:5px;padding:2px 7px;background:var(--green-light);cursor:pointer;">+ Assign</button>`;
+  }
   const smEl=document.getElementById('d-sm');
   smEl.innerHTML=p.sm==='-'?'<span class="text-muted">–</span>':`<span class="flex items-center gap-8">${avHtml(p.sm)} ${p.sm}</span>`;
   const recEl=document.getElementById('d-rec');
@@ -1042,22 +1061,36 @@ function ssRenderStrategy(s) {
 }
 
 function ssRenderProgramBanner() {
-  const d1=new Date(PROGRAM_CONTEXT.startDate+'T00:00:00').toLocaleDateString('en-GB',{day:'numeric',month:'short'});
-  const d2=new Date(PROGRAM_CONTEXT.endDate+'T00:00:00').toLocaleDateString('en-GB',{day:'numeric',month:'short'});
+  const ctx = getProgramContext();
+  if (!ctx) {
+    return `
+      <div style="background:var(--gray-50);border:1px dashed var(--gray-300);border-radius:10px;padding:12px 18px;margin-bottom:16px;display:flex;align-items:center;gap:14px;flex-wrap:wrap">
+        <span style="font-size:18px">📋</span>
+        <div style="flex:1;font-size:13px;color:var(--gray-500)">This position is not linked to a Hiring Program yet.</div>
+        <button onclick="openProgramAssignModal()" style="display:inline-flex;align-items:center;gap:4px;font-size:12px;font-weight:500;color:var(--green-dark);padding:6px 13px;border:1px solid #A7F3D0;border-radius:7px;background:var(--green-light);white-space:nowrap;flex-shrink:0;cursor:pointer">
+          + Assign to Program
+        </button>
+      </div>`;
+  }
+  const d1=new Date(ctx.startDate+'T00:00:00').toLocaleDateString('en-GB',{day:'numeric',month:'short'});
+  const d2=new Date(ctx.endDate+'T00:00:00').toLocaleDateString('en-GB',{day:'numeric',month:'short'});
   return `
     <div style="background:#EFF6FF;border:1px solid #BFDBFE;border-radius:10px;padding:12px 18px;margin-bottom:16px;display:flex;align-items:center;gap:14px;flex-wrap:wrap">
       <span style="font-size:18px">📋</span>
       <div style="flex:1;min-width:200px">
         <div style="font-size:11px;color:#1D4ED8;font-weight:600;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:3px">Part of Hiring Program</div>
         <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
-          <span style="font-size:14px;font-weight:600;color:#1E3A8A">${PROGRAM_CONTEXT.name}</span>
-          <span style="font-size:12px;background:#DBEAFE;color:#1D4ED8;padding:2px 9px;border-radius:10px;font-weight:500">${PROGRAM_CONTEXT.groupName}</span>
-          <span style="font-size:12px;color:#3B82F6">${d1} – ${d2} · ${PROGRAM_CONTEXT.account}</span>
+          <span style="font-size:14px;font-weight:600;color:#1E3A8A">${ctx.name}</span>
+          <span style="font-size:12px;background:#DBEAFE;color:#1D4ED8;padding:2px 9px;border-radius:10px;font-weight:500">${ctx.groupName}</span>
+          <span style="font-size:12px;color:#3B82F6">${d1} – ${d2} · ${ctx.account}</span>
         </div>
       </div>
-      <button onclick="nav('programs-detail',PROGRAM_CONTEXT.programId)" style="display:inline-flex;align-items:center;gap:4px;font-size:12px;font-weight:500;color:#2563EB;padding:6px 13px;border:1px solid #BFDBFE;border-radius:7px;background:white;white-space:nowrap;flex-shrink:0;cursor:pointer">
-        View Program →
-      </button>
+      <div style="display:flex;gap:8px;flex-shrink:0">
+        <button onclick="openProgramAssignModal()" style="display:inline-flex;align-items:center;font-size:12px;font-weight:500;color:var(--gray-500);padding:6px 10px;border:1px solid var(--gray-200);border-radius:7px;background:white;cursor:pointer">✎ Change</button>
+        <button onclick="nav('programs-detail','${ctx.programId}')" style="display:inline-flex;align-items:center;gap:4px;font-size:12px;font-weight:500;color:#2563EB;padding:6px 13px;border:1px solid #BFDBFE;border-radius:7px;background:white;white-space:nowrap;cursor:pointer">
+          View Program →
+        </button>
+      </div>
     </div>`;
 }
 
@@ -1655,6 +1688,62 @@ function hpSaveNewVersion() {
   p.history=p.history||[]; p.history.push(snapshot);
   p.version=(p.version||1)+1;
   hpCloseModal(); hpRenderDetail();
+}
+
+/* ══════════════════════════════════════════════
+   PROGRAM ASSIGNMENT MODAL
+══════════════════════════════════════════════ */
+function openProgramAssignModal() {
+  const p = positions.find(x => x.id === currentId);
+  const progOpts = programs.map(prog =>
+    `<option value="${prog.id}" ${p?.programId===prog.id?'selected':''}>${prog.name} — ${prog.account}</option>`
+  ).join('');
+
+  const currentProg = p?.programId ? programs.find(x=>x.id===p.programId) : null;
+  const groupOpts = currentProg
+    ? currentProg.groups.map(g => `<option value="${g.id}" ${p?.groupId===g.id?'selected':''}>${g.name}</option>`).join('')
+    : '';
+
+  const body = `
+    <div style="padding:20px 24px;display:flex;flex-direction:column;gap:16px;">
+      <div>
+        <label style="font-size:12px;font-weight:600;color:var(--gray-500);display:block;margin-bottom:6px;">Hiring Program</label>
+        <select id="pa-prog" style="width:100%;padding:8px 10px;border:1px solid var(--gray-200);border-radius:7px;font-size:14px;font-family:inherit;" onchange="paUpdateGroups()">
+          <option value="">— None —</option>
+          ${progOpts}
+        </select>
+      </div>
+      <div id="pa-group-wrap" style="${currentProg?'':'display:none'}">
+        <label style="font-size:12px;font-weight:600;color:var(--gray-500);display:block;margin-bottom:6px;">Group / Wave <span style="font-weight:400;color:var(--gray-400)">(optional)</span></label>
+        <select id="pa-group" style="width:100%;padding:8px 10px;border:1px solid var(--gray-200);border-radius:7px;font-size:14px;font-family:inherit;">
+          <option value="">— No group —</option>
+          ${groupOpts}
+        </select>
+      </div>
+    </div>`;
+
+  hpOpenModal('Assign to Hiring Program', body, saveProgramAssign);
+}
+
+function paUpdateGroups() {
+  const progId = document.getElementById('pa-prog').value;
+  const wrap = document.getElementById('pa-group-wrap');
+  const sel  = document.getElementById('pa-group');
+  if (!progId) { wrap.style.display='none'; sel.innerHTML='<option value="">— No group —</option>'; return; }
+  const prog = programs.find(x=>x.id===progId);
+  sel.innerHTML = '<option value="">— No group —</option>' +
+    (prog?.groups||[]).map(g=>`<option value="${g.id}">${g.name}</option>`).join('');
+  wrap.style.display = '';
+}
+
+function saveProgramAssign() {
+  const progId  = document.getElementById('pa-prog').value  || null;
+  const groupId = document.getElementById('pa-group')?.value || null;
+  const p = positions.find(x => x.id === currentId);
+  if (p) { p.programId = progId; p.groupId = groupId || null; }
+  hpCloseModal();
+  openPos(currentId); // refresh General tab fields
+  toast(progId ? '✓ Position linked to program' : '✓ Program assignment removed');
 }
 
 /* ══════════════════════════════════════════════
