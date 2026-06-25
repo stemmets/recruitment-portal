@@ -1057,7 +1057,7 @@ function ssRenderStrategy(s) {
       </div>`;
     return;
   }
-  root.innerHTML=ssRenderProgramBanner()+ssRenderStrategyBar(s)+ssRenderDeliverables(s)+ssTimeline(s)+ssRenderSearchSetup(s)+ssRenderNotes(s);
+  root.innerHTML=ssRenderProgramBanner()+ssRenderStrategyBar(s)+ssRenderDelivAndTimeline(s)+ssRenderSearchSetup(s)+ssRenderNotes(s);
 }
 
 function ssRenderProgramBanner() {
@@ -1118,20 +1118,45 @@ function ssRenderStrategyBar(s) {
     </div>`;
 }
 
-function ssRenderDeliverables(s) {
+function ssRenderDelivAndTimeline(s) {
   const mode=getMode(s.modeId); if(!mode) return '';
-  const cards=mode.deliverables.map(def=>{
+  const today=new Date(); today.setHours(0,0,0,0);
+  const todayStr=today.toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'numeric'});
+  const steps=mode.deliverables.map((def,i)=>{
     const val=s.deliverableValues.find(v=>v.id===def.id)||{};
-    let display,isSet;
-    if(def.hasCount){display=val.count!=null?val.count.toLocaleString():'—';isSet=val.count!=null;}
-    else{display=val.date?fmtShort(val.date):'—';isSet=!!val.date;}
-    return `<div class="stat-card ${isSet?'green':'neutral'}">
-      <div class="stat-icon">${def.icon}</div>
-      <div class="stat-number" style="font-size:${def.hasCount?'24px':'16px'};">${display}</div>
-      <div class="stat-label">${def.label}</div>
+    const hasCount=val.count!=null;
+    const hasDate=!!val.date;
+    const isPast=hasDate&&new Date(val.date+'T00:00:00')<=today;
+    const isLast=i===mode.deliverables.length-1;
+    const dotColor=isPast?'background:var(--green)':(hasDate?'background:white;border:2px solid var(--gray-400)':'background:white;border:2px solid var(--gray-200)');
+    const countBadge=hasCount
+      ?`<span style="background:var(--gray-100);color:var(--gray-700);font-size:12px;font-weight:600;padding:2px 10px;border-radius:10px;">${val.count.toLocaleString()}</span>`
+      :'';
+    const datePart=hasDate
+      ?`<span style="font-size:12px;color:${isPast?'var(--gray-400)':'var(--gray-700)'};">📅 ${fmt(val.date)}</span>`
+      :`<span style="font-size:12px;color:var(--gray-300);">📅 —</span>`;
+    return `<div style="display:flex;gap:16px;">
+      <div style="display:flex;flex-direction:column;align-items:center;flex-shrink:0;width:12px;">
+        <div style="width:12px;height:12px;border-radius:50%;flex-shrink:0;margin-top:13px;${dotColor}"></div>
+        ${!isLast?`<div style="width:2px;flex:1;min-height:10px;background:var(--gray-200);margin-top:3px;"></div>`:''}
+      </div>
+      <div style="padding-top:7px;padding-bottom:${isLast?'0':'14px'};flex:1;">
+        <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+          <span style="font-size:16px;">${def.icon}</span>
+          <span style="font-size:14px;font-weight:500;">${def.label}</span>
+          ${countBadge}
+          <span style="margin-left:auto;">${datePart}</span>
+        </div>
+      </div>
     </div>`;
   }).join('');
-  return `<div class="deliverables-grid">${cards}</div>`;
+  return `<div class="card" style="margin-bottom:16px;">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
+      <span class="font-600" style="font-size:14px;">Deliverables & Timeline</span>
+      <span class="text-muted text-sm">Today: ${todayStr}</span>
+    </div>
+    ${steps}
+  </div>`;
 }
 
 function ssTimeline(s) {
@@ -1296,13 +1321,14 @@ function ssBuildDelivRows(modeId, values) {
   const mode=getMode(modeId); if(!mode) return '';
   const rows=mode.deliverables.map(def=>{
     const val=values.find(v=>v.id===def.id)||{};
-    const countCell=def.hasCount
-      ?`<div class="deliv-count"><span class="deliv-field-label">Count</span><input type="number" data-deliv="${def.id}" data-field="count" value="${val.count??''}" placeholder="—" min="1"></div>`
-      :`<div class="deliv-count"><span class="deliv-empty">—</span></div>`;
-    const dateCell=def.isTimeline
-      ?`<div class="deliv-date"><span class="deliv-field-label">Date</span><input type="date" data-deliv="${def.id}" data-field="date" value="${val.date||''}"></div>`
-      :`<div class="deliv-date"><span class="deliv-empty" style="font-size:10px;">not on timeline</span></div>`;
-    return `<div class="deliv-row"><div class="deliv-icon">${def.icon}</div><div class="deliv-name">${def.label}</div>${countCell}${dateCell}</div>`;
+    const countLbl=`<span class="deliv-field-label">Count${!def.hasCount?' <span style="color:var(--gray-300);font-weight:400;">(opt)</span>':''}</span>`;
+    const dateLbl =`<span class="deliv-field-label">Date${!def.isTimeline?' <span style="color:var(--gray-300);font-weight:400;">(opt)</span>':''}</span>`;
+    return `<div class="deliv-row">
+      <div class="deliv-icon">${def.icon}</div>
+      <div class="deliv-name">${def.label}</div>
+      <div class="deliv-count">${countLbl}<input type="number" data-deliv="${def.id}" data-field="count" value="${val.count??''}" placeholder="—" min="1"></div>
+      <div class="deliv-date">${dateLbl}<input type="date" data-deliv="${def.id}" data-field="date" value="${val.date||''}"></div>
+    </div>`;
   }).join('');
   return `<div class="deliv-table"><div class="deliv-header"><div class="dh-icon"></div><div class="dh-name">Deliverable</div><div class="dh-count">Target Count</div><div class="dh-date">Target Date</div></div>${rows}</div>`;
 }
@@ -1463,6 +1489,13 @@ function hpRenderDetail() {
         ${p.positions.length?`<div class="hp-pos-list">${p.positions.map(x=>{const grp=p.groups.find(g=>g.positionIds.includes(x.id));return hpPosRow(x,grp?grp.name:null);}).join('')}</div>`:
         `<div class="empty-state" style="padding:20px"><div class="es-text">No positions yet</div><div class="es-sub">Add positions to group them and track FTEs</div></div>`}
       </div>
+    </div>
+    <div class="section">
+      <div class="section-hd">
+        <div class="section-title">Portal Positions</div>
+        <button class="btn btn-secondary btn-sm" onclick="hpLinkPositionModal()">+ Link Position</button>
+      </div>
+      ${hpRenderLinkedPositions(p)}
     </div>
     <div class="section">
       <div class="section-hd"><div class="section-title">Version History</div></div>
@@ -1688,6 +1721,72 @@ function hpSaveNewVersion() {
   p.history=p.history||[]; p.history.push(snapshot);
   p.version=(p.version||1)+1;
   hpCloseModal(); hpRenderDetail();
+}
+
+/* ══════════════════════════════════════════════
+   HP PORTAL POSITIONS LINKING
+══════════════════════════════════════════════ */
+function hpRenderLinkedPositions(p) {
+  const linked = positions.filter(x => x.programId === p.id);
+  if (!linked.length) return `<div class="card"><div class="empty-state" style="padding:20px"><div class="es-text">No portal positions linked yet</div><div class="es-sub">Link recruitment requests to this program to track them here</div></div></div>`;
+  const rows = linked.map(pos => {
+    const grp = p.groups.find(g => g.id === pos.groupId);
+    return `<div style="display:flex;align-items:center;gap:12px;padding:12px 16px;border-bottom:1px solid var(--gray-100);">
+      <div style="flex:1;min-width:0;">
+        <div style="font-weight:500;font-size:14px;">${pos.pos}</div>
+        <div style="font-size:12px;color:var(--gray-500);margin-top:2px;">${pos.lvl.join(', ')} · ${pos.locs.join(', ')}</div>
+      </div>
+      ${grp?`<span style="font-size:12px;color:var(--gray-400);flex-shrink:0;">${grp.name}</span>`:''}
+      ${badge(pos.status)}
+      <button onclick="hpUnlinkPosition(${pos.id})" style="font-size:11px;color:var(--gray-400);border:1px solid var(--gray-200);border-radius:5px;padding:3px 8px;background:white;cursor:pointer;flex-shrink:0;">Unlink</button>
+    </div>`;
+  }).join('');
+  return `<div class="card" style="padding:0;overflow:hidden;">${rows}</div>`;
+}
+
+function hpUnlinkPosition(posId) {
+  const p = positions.find(x => x.id === posId);
+  if (p) { p.programId = null; p.groupId = null; }
+  hpRenderDetail();
+  toast('Position unlinked');
+}
+
+function hpLinkPositionModal() {
+  const prog = programs.find(x => x.id === hpCurrentId);
+  const available = positions.filter(p => p.programId !== hpCurrentId);
+  if (!available.length) { toast('All positions are already linked to this program'); return; }
+  const posOpts = available.map(p => {
+    const otherProg = p.programId ? programs.find(x=>x.id===p.programId) : null;
+    const warn = otherProg ? ` ⚠ linked to ${otherProg.name}` : '';
+    return `<option value="${p.id}">${p.pos} — ${p.lvl.join(', ')}${warn}</option>`;
+  }).join('');
+  const grpOpts = (prog?.groups||[]).map(g=>`<option value="${g.id}">${g.name}</option>`).join('');
+  const body = `
+    <div style="padding:20px 24px;display:flex;flex-direction:column;gap:16px;">
+      <div>
+        <label style="font-size:12px;font-weight:600;color:var(--gray-500);display:block;margin-bottom:6px;">Position *</label>
+        <select id="lp-pos" style="width:100%;padding:8px 10px;border:1px solid var(--gray-200);border-radius:7px;font-size:14px;font-family:inherit;">
+          <option value="">Select a position…</option>${posOpts}
+        </select>
+      </div>
+      <div>
+        <label style="font-size:12px;font-weight:600;color:var(--gray-500);display:block;margin-bottom:6px;">Assign to Group <span style="font-weight:400;color:var(--gray-400)">(optional)</span></label>
+        <select id="lp-group" style="width:100%;padding:8px 10px;border:1px solid var(--gray-200);border-radius:7px;font-size:14px;font-family:inherit;">
+          <option value="">— No group —</option>${grpOpts}
+        </select>
+      </div>
+    </div>`;
+  hpOpenModal('Link Portal Position', body, hpSaveLinkPosition);
+}
+
+function hpSaveLinkPosition() {
+  const posId = parseInt(document.getElementById('lp-pos').value);
+  const groupId = document.getElementById('lp-group').value || null;
+  if (!posId) { alert('Please select a position.'); return; }
+  const p = positions.find(x => x.id === posId);
+  if (p) { p.programId = hpCurrentId; p.groupId = groupId; }
+  hpCloseModal(); hpRenderDetail();
+  toast('✓ Position linked to program');
 }
 
 /* ══════════════════════════════════════════════
