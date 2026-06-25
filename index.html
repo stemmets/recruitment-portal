@@ -422,7 +422,7 @@ textarea { resize: vertical; min-height: 80px; }
 <div class="page" id="page-detail">
   <div class="main">
     <div class="breadcrumb"><span class="bc-link" onclick="nav('positions')">Open Positions</span><span>›</span><span>Open Position Details</span></div>
-    <div class="card" style="margin-bottom:24px;padding-bottom:0;">
+    <div class="card" style="margin-bottom:24px;padding-bottom:0;overflow:hidden;">
       <div class="flex items-center gap-12" style="margin-bottom:4px;">
         <span class="pos-title" id="d-title">–</span>
         <span class="text-muted" id="d-levels">–</span>
@@ -634,47 +634,7 @@ let positions = [
 /* ══════════════════════════════════════════════
    STRATEGIES DATA
 ══════════════════════════════════════════════ */
-let strategies = [
-  {
-    id:1, version:1, status:'archived',
-    createdAt:'2026-04-01', createdBy:'Sarah Park',
-    versionNote:'Initial strategy.',
-    modeId:'standard',
-    deliverableValues:[
-      {id:'profiles',count:800,  date:null},
-      {id:'cvs',     count:5,    date:'2026-05-01'},
-      {id:'internal',count:5,    date:'2026-05-20'},
-      {id:'offer',   count:null, date:'2026-06-10'},
-      {id:'start',   count:null, date:'2026-07-01'},
-    ],
-    channels:['LinkedIn','Djinni'], customChannels:[],
-    compensation:[
-      {loc:'Ukraine',min:2000,max:2800,currency:'USD'},
-      {loc:'Poland', min:3000,max:4000,currency:'USD'},
-    ],
-    notes:'Initial strategy — standard BA flow with internal interviews only. Focus Ukraine first, Poland as secondary market.'
-  },
-  {
-    id:2, version:2, status:'active',
-    createdAt:'2026-05-15', createdBy:'Sarah Park',
-    versionNote:'Switched to DTCC — added client interview stage, raised comp range.',
-    modeId:'dtcc',
-    deliverableValues:[
-      {id:'profiles',count:1000,date:null},
-      {id:'cvs',     count:5,   date:'2026-07-10'},
-      {id:'internal',count:6,   date:'2026-07-28'},
-      {id:'external',count:3,   date:'2026-08-10'},
-      {id:'offer',   count:null,date:'2026-08-18'},
-      {id:'start',   count:null,date:'2026-09-08'},
-    ],
-    channels:['LinkedIn','Djinni','Referral'], customChannels:['Work.ua'],
-    compensation:[
-      {loc:'Ukraine',min:2500,max:3500,currency:'USD'},
-      {loc:'Poland', min:3500,max:5000,currency:'USD'},
-    ],
-    notes:'Revised to DTCC mode after HM feedback. Added client-side external interviews (3 rounds). Raised compensation range for both locations. Added Work.ua for Ukraine sourcing.'
-  },
-];
+let strategies = [];
 
 /* ══════════════════════════════════════════════
    HP PROGRAMS DATA
@@ -1482,13 +1442,6 @@ function hpRenderDetail() {
     <div class="section">
       <div class="section-hd"><div class="section-title">Groups</div><button class="btn btn-secondary btn-sm" onclick="hpGroupModal('new',null)">+ Add Group</button></div>
       <div style="display:flex;flex-direction:column;gap:10px">${hpRenderGroups(p)}</div>
-    </div>
-    <div class="section">
-      <div class="section-hd"><div class="section-title">All Positions</div><button class="btn btn-secondary btn-sm" onclick="hpPositionModal()">+ Add Position</button></div>
-      <div class="card">
-        ${p.positions.length?`<div class="hp-pos-list">${p.positions.map(x=>{const grp=p.groups.find(g=>g.positionIds.includes(x.id));return hpPosRow(x,grp?grp.name:null);}).join('')}</div>`:
-        `<div class="empty-state" style="padding:20px"><div class="es-text">No positions yet</div><div class="es-sub">Add positions to group them and track FTEs</div></div>`}
-      </div>
     </div>
     <div class="section">
       <div class="section-hd">
