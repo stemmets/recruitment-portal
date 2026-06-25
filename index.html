@@ -1111,24 +1111,29 @@ function ssRenderDelivAndTimeline(s) {
   const todayPct=Math.max(10,Math.min(90,todayRaw));
   const showToday=todayRaw>=10&&todayRaw<=90;
 
-  const dots=milestones.map(m=>{
+  // Track center at top:65px within the 140px inner div
+  const TRACK_TOP=65, DOT_TOP=59, DOT_H=12;
+  const dots=milestones.map((m,idx)=>{
     const pct=toPct(m.date);
     const isPast=new Date(m.date+'T00:00:00')<=today;
     const dotBg=isPast?'var(--green)':'white';
     const dotBrd=isPast?'var(--green)':'var(--gray-300)';
-    const tip=`${m.label}: ${fmt(m.date)}${m.count!=null?' · '+m.count.toLocaleString():''} ${m.notes?'\n'+m.notes:''}`.trim();
-    return `<div style="position:absolute;left:${pct}%;top:0;transform:translateX(-50%);display:flex;flex-direction:column;align-items:center;width:80px;">
-      <div title="${tip}" style="width:12px;height:12px;border-radius:50%;background:${dotBg};border:2px solid ${dotBrd};flex-shrink:0;cursor:default"></div>
-      <div style="text-align:center;margin-top:6px;width:80px">
-        <div style="font-size:10px;font-weight:600;color:var(--gray-700);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${m.label}</div>
-        <div style="font-size:10px;color:${isPast?'var(--gray-400)':'var(--gray-600)'};margin-top:1px">${fmtShort(m.date)}</div>
-        ${m.count!=null?`<div style="font-size:11px;font-weight:700;color:var(--green-dark);margin-top:2px">${m.count.toLocaleString()}</div>`:''}
-      </div>
+    const tip=`${m.label}: ${fmt(m.date)}${m.count!=null?' · '+m.count.toLocaleString():''}${m.notes?'\n'+m.notes:''}`.trim();
+    const isAbove=idx%2===1;
+    const labelPos=isAbove?'bottom:87px':'top:77px';
+    const labelHtml=`<div style="position:absolute;${labelPos};left:0;right:0;text-align:center">
+      <div style="font-size:10px;font-weight:600;color:var(--gray-700);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${m.label}</div>
+      <div style="font-size:10px;color:${isPast?'var(--gray-400)':'var(--gray-600)'};margin-top:1px">${fmtShort(m.date)}</div>
+      ${m.count!=null?`<div style="font-size:11px;font-weight:700;color:var(--green-dark);margin-top:2px">${m.count.toLocaleString()}</div>`:''}
+    </div>`;
+    return `<div style="position:absolute;left:${pct}%;transform:translateX(-50%);width:80px;height:140px;">
+      <div title="${tip}" style="position:absolute;top:${DOT_TOP}px;left:50%;transform:translateX(-50%);width:${DOT_H}px;height:${DOT_H}px;border-radius:50%;background:${dotBg};border:2px solid ${dotBrd};cursor:default"></div>
+      ${labelHtml}
     </div>`;
   }).join('');
 
-  const todayLine=showToday?`<div style="position:absolute;left:${todayPct}%;top:0;width:2px;height:12px;background:#EF4444;transform:translateX(-50%)"></div>`:'';
-  const progressLine=showToday?`<div style="position:absolute;left:10%;width:${(todayPct-10).toFixed(2)}%;top:5px;height:2px;background:var(--green)"></div>`:'';
+  const todayLine=showToday?`<div style="position:absolute;left:${todayPct}%;top:${DOT_TOP}px;width:2px;height:${DOT_H}px;background:#EF4444;transform:translateX(-50%)"></div>`:'';
+  const progressLine=showToday?`<div style="position:absolute;left:10%;width:${(todayPct-10).toFixed(2)}%;top:${TRACK_TOP}px;height:2px;background:var(--green)"></div>`:'';
 
   return `<div class="card" style="margin-bottom:16px">
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
@@ -1138,9 +1143,9 @@ function ssRenderDelivAndTimeline(s) {
     ${statsRow}
     <div style="overflow-x:auto">
       <div style="min-width:480px;position:relative">
-        <div style="position:absolute;left:10%;right:10%;top:5px;height:2px;background:var(--gray-200)"></div>
+        <div style="position:absolute;left:10%;right:10%;top:${TRACK_TOP}px;height:2px;background:var(--gray-200)"></div>
         ${progressLine}
-        <div style="position:relative;height:90px">${todayLine}${dots}</div>
+        <div style="position:relative;height:140px">${todayLine}${dots}</div>
       </div>
     </div>
   </div>`;
@@ -1354,12 +1359,6 @@ function saveStrategy() {
     const dInput=document.querySelector(`input[data-deliv="${def.id}"][data-field="date"]`);
     deliverableValues.push({id:def.id,count:cInput?(parseInt(cInput.value)||null):null,date:dInput?(dInput.value||null):null});
   });
-  const startDef=mode.deliverables.find(d=>d.id==='start'||d.id==='ready');
-  const startVal=startDef?deliverableValues.find(v=>v.id===startDef.id):null;
-  if(!startVal?.date){toast(`⚠️ Set the "${startDef?.label||'Start'}" date`);return;}
-  const cvsDef=mode.deliverables.find(d=>d.isTimeline&&d.id!=='start'&&d.id!=='ready'&&d.id!=='offer');
-  const cvsVal=cvsDef?deliverableValues.find(v=>v.id===cvsDef.id):null;
-  if(cvsDef&&!cvsVal?.date){toast(`⚠️ Set the "${cvsDef.label}" date`);return;}
   const comp=[];
   document.querySelectorAll('.c-min').forEach(inp=>{
     const loc=inp.dataset.loc;
@@ -1661,13 +1660,39 @@ function hpGroupModal(mode,gid) {
   hpModalMode=mode==='edit'?'edit-group':'new-group'; hpEditGid=gid;
   const p=programs.find(x=>x.id===hpCurrentId);
   const g=gid?p.groups.find(x=>x.id===gid):null;
+  const hpLinked=positions.filter(pos=>pos.programId===hpCurrentId);
+  const posRows=hpLinked.length
+    ? hpLinked.map(pos=>{
+        const checked=g&&pos.groupId===g.id;
+        const inOtherGroup=g?pos.groupId&&pos.groupId!==g.id:pos.groupId;
+        const otherGrp=inOtherGroup?p.groups.find(gr=>gr.id===pos.groupId):null;
+        const strat=strategies.find(s=>s.status==='active'&&s.positionId===pos.id);
+        const mode2=strat?getMode(strat.modeId):null;
+        const keyDates=mode2?mode2.deliverables.filter(d=>d.isTimeline).map(def=>{
+          const val=strat.deliverableValues.find(v=>v.id===def.id)||{};
+          return val.date?`${def.label}: ${fmtShort(val.date)}`:null;
+        }).filter(Boolean):[];
+        return `<label style="display:flex;align-items:flex-start;gap:8px;padding:8px 10px;background:var(--gray-50);border-radius:6px;cursor:pointer;margin-bottom:4px">
+          <input type="checkbox" data-pos="${pos.id}" ${checked?'checked':''} style="margin-top:2px;flex-shrink:0">
+          <div style="flex:1;min-width:0">
+            <div style="font-size:13px;font-weight:500;display:flex;align-items:center;gap:6px;flex-wrap:wrap">
+              ${pos.pos}
+              <span class="badge ${pos.status==='Draft'?'b-draft':pos.status==='In Progress'?'b-progress':'b-completed'}">${pos.status}</span>
+              ${otherGrp?`<span style="font-size:11px;color:var(--gray-400)">→ ${otherGrp.name}</span>`:''}
+            </div>
+            ${keyDates.length?`<div style="font-size:11px;color:var(--gray-400);margin-top:3px">${keyDates.join(' · ')}</div>`:''}
+          </div>
+        </label>`;
+      }).join('')
+    : `<div style="font-size:12px;color:var(--gray-400);padding:6px 0">No positions linked to this program yet.</div>`;
   const body=`
     <div class="fg"><label class="fl">Group Name *</label><input class="fi" id="m-gname" placeholder='e.g. "Wave 1", "Phase 2"...' value="${g?.name||''}"></div>
     <div class="form-row">
       <div class="fg"><label class="fl">Start Date *</label><input class="fi" type="date" id="m-gstart" value="${g?.startDate||''}"></div>
       <div class="fg"><label class="fl">End Date</label><input class="fi" type="date" id="m-gend" value="${g?.endDate||''}"></div>
     </div>
-    <div class="fg"><label class="fl">Notes</label><textarea class="fta" id="m-gnotes" placeholder="Context, constraints...">${g?.notes||''}</textarea></div>`;
+    <div class="fg"><label class="fl">Notes</label><textarea class="fta" id="m-gnotes" placeholder="Context, constraints...">${g?.notes||''}</textarea></div>
+    <div class="fg"><label class="fl">Positions in this Group</label><div style="max-height:220px;overflow-y:auto;margin-top:4px">${posRows}</div></div>`;
   hpOpenModal(mode==='edit'?'Edit Group':'Add Group',body,hpSaveGroup);
 }
 
@@ -1678,13 +1703,21 @@ function hpSaveGroup() {
   const notes=document.getElementById('m-gnotes').value.trim();
   if(!name||!startDate){alert('Group name and start date are required.');return;}
   const p=programs.find(x=>x.id===hpCurrentId);
+  let gId;
   if(hpModalMode==='new-group'){
     const ng={id:uid(),name,startDate,endDate:endDate||null,notes};
-    p.groups.push(ng); hpExpanded.add(ng.id);
+    p.groups.push(ng); hpExpanded.add(ng.id); gId=ng.id;
   } else {
     const g=p.groups.find(x=>x.id===hpEditGid);
-    Object.assign(g,{name,startDate,endDate:endDate||null,notes});
+    Object.assign(g,{name,startDate,endDate:endDate||null,notes}); gId=hpEditGid;
   }
+  // Apply position assignments
+  document.querySelectorAll('input[data-pos]').forEach(inp=>{
+    const pos=positions.find(x=>String(x.id)===String(inp.dataset.pos));
+    if(!pos) return;
+    if(inp.checked) pos.groupId=gId;
+    else if(pos.groupId===gId) pos.groupId=null;
+  });
   hpCloseModal(); persist(); hpRenderDetail();
 }
 
