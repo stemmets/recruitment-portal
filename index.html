@@ -566,34 +566,34 @@ const COOPERATION_MODES = [
     id: 'dtcc', name: 'DTCC',
     description: 'Standard DTCC — includes client-side external interviews',
     deliverables: [
-      { id:'profiles', label:'Profiles to Review',  icon:'👁', hasCount:true,  isTimeline:false },
-      { id:'cvs',      label:'CVs to HM',           icon:'📄', hasCount:true,  isTimeline:true  },
-      { id:'internal', label:'Internal Interviews',  icon:'🤝', hasCount:true,  isTimeline:true  },
-      { id:'external', label:'External Interviews',  icon:'🌐', hasCount:true,  isTimeline:true  },
-      { id:'offer',    label:'Offer',                icon:'📋', hasCount:false, isTimeline:true  },
-      { id:'start',    label:'Start',                icon:'🚀', hasCount:false, isTimeline:true  },
+      { id:'profiles', label:'Profiles to Review',  icon:'👁', hasCount:true,  isTimeline:false, defaultCount:50 },
+      { id:'cvs',      label:'CVs to HM',           icon:'📄', hasCount:true,  isTimeline:true,  defaultCount:10 },
+      { id:'internal', label:'Internal Interviews',  icon:'🤝', hasCount:true,  isTimeline:true,  defaultCount:5  },
+      { id:'external', label:'External Interviews',  icon:'🌐', hasCount:true,  isTimeline:true,  defaultCount:3  },
+      { id:'offer',    label:'Offer',                icon:'📋', hasCount:false, isTimeline:true                   },
+      { id:'start',    label:'Start',                icon:'🚀', hasCount:false, isTimeline:true                   },
     ]
   },
   {
     id: 'standard', name: 'Standard (Internal Only)',
     description: 'Internal interviews only — no client interview stage',
     deliverables: [
-      { id:'profiles', label:'Profiles to Review',  icon:'👁', hasCount:true,  isTimeline:false },
-      { id:'cvs',      label:'CVs to HM',           icon:'📄', hasCount:true,  isTimeline:true  },
-      { id:'internal', label:'Internal Interviews',  icon:'🤝', hasCount:true,  isTimeline:true  },
-      { id:'offer',    label:'Offer',                icon:'📋', hasCount:false, isTimeline:true  },
-      { id:'start',    label:'Start',                icon:'🚀', hasCount:false, isTimeline:true  },
+      { id:'profiles', label:'Profiles to Review',  icon:'👁', hasCount:true,  isTimeline:false, defaultCount:50 },
+      { id:'cvs',      label:'CVs to HM',           icon:'📄', hasCount:true,  isTimeline:true,  defaultCount:10 },
+      { id:'internal', label:'Internal Interviews',  icon:'🤝', hasCount:true,  isTimeline:true,  defaultCount:5  },
+      { id:'offer',    label:'Offer',                icon:'📋', hasCount:false, isTimeline:true                   },
+      { id:'start',    label:'Start',                icon:'🚀', hasCount:false, isTimeline:true                   },
     ]
   },
   {
     id: 'talent_pool', name: 'Talent Pool Build',
     description: 'Build a candidate pipeline for potential positions (no offer)',
     deliverables: [
-      { id:'profiles',  label:'Profiles to Review',   icon:'👁', hasCount:true,  isTimeline:false },
-      { id:'screened',  label:'Screened Candidates',  icon:'✅', hasCount:true,  isTimeline:true  },
-      { id:'tech_int',  label:'Technical Interviews', icon:'🤝', hasCount:true,  isTimeline:true  },
-      { id:'shortlist', label:'Shortlisted',          icon:'⭐', hasCount:true,  isTimeline:true  },
-      { id:'ready',     label:'Pipeline Ready',       icon:'🚀', hasCount:false, isTimeline:true  },
+      { id:'profiles',  label:'Profiles to Review',   icon:'👁', hasCount:true,  isTimeline:false, defaultCount:100 },
+      { id:'screened',  label:'Screened Candidates',  icon:'✅', hasCount:true,  isTimeline:true,  defaultCount:30  },
+      { id:'tech_int',  label:'Technical Interviews', icon:'🤝', hasCount:true,  isTimeline:true,  defaultCount:10  },
+      { id:'shortlist', label:'Shortlisted',          icon:'⭐', hasCount:true,  isTimeline:true,  defaultCount:5   },
+      { id:'ready',     label:'Pipeline Ready',       icon:'🚀', hasCount:false, isTimeline:true                    },
     ]
   },
 ];
@@ -709,6 +709,7 @@ let formChannels       = [];
 let formCustomChannels = [];
 let formOriginalModeId = null;
 let formPrefillValues  = [];
+let formGroupCtx       = null;
 let histListOpen       = false;
 let histOpen           = {};
 
@@ -1252,6 +1253,11 @@ function ssOpenModal(mode,id=null) {
   formPrefillValues=[...(prefill?.deliverableValues||[])];
   formChannels=[...(prefill?.channels||['LinkedIn','Djinni'])];
   formCustomChannels=[...(prefill?.customChannels||[])];
+  // Resolve group context for the current position
+  const curPos=positions.find(x=>x.id===currentId);
+  const curProg=curPos?.programId?programs.find(x=>x.id===curPos.programId):null;
+  const curGrp=curProg&&curPos?.groupId?curProg.groups.find(g=>g.id===curPos.groupId):null;
+  formGroupCtx=curGrp?{prog:curProg,grp:curGrp}:null;
   const ver=mode==='new'?nextVer():(prefill?.version||'?');
   document.getElementById('ss-modal-title').textContent=mode==='new'?`Create Strategy v${ver}`:`Edit Strategy v${ver}`;
   document.getElementById('ss-modal-save-btn').textContent='Save';
@@ -1261,7 +1267,29 @@ function ssOpenModal(mode,id=null) {
 }
 
 function ssBuildForm(p) {
-  const modeOpts=COOPERATION_MODES.map(m=>`<option value="${m.id}" ${p?.modeId===m.id?'selected':''}>${m.name} — ${m.description}</option>`).join('');
+  // Determine pre-selected mode: saved → group default → none
+  const grpModeId=formGroupCtx?.grp?.modeId||null;
+  const selectedModeId=p?.modeId||(ssModalMode==='new'?grpModeId:null)||null;
+  const useDefaults=ssModalMode==='new'&&!p; // pre-fill defaultCounts for brand-new strategies
+  const modeOpts=COOPERATION_MODES.map(m=>`<option value="${m.id}" ${selectedModeId===m.id?'selected':''}>${m.name} — ${m.description}</option>`).join('');
+  // Group context banner
+  const groupBanner=formGroupCtx?(()=>{
+    const {prog,grp}=formGroupCtx;
+    const idx=prog.groups.findIndex(g=>g.id===grp.id);
+    const color=GROUP_COLORS[idx>=0?idx%GROUP_COLORS.length:0];
+    const dateRange=`${fmtShort(grp.startDate)}${grp.endDate&&grp.endDate!==grp.startDate?' – '+fmtShort(grp.endDate):''}`;
+    const modeName=grp.modeId?getMode(grp.modeId)?.name:null;
+    return `<div style="background:var(--gray-50);border:1px solid var(--gray-200);border-left:3px solid ${color};border-radius:8px;padding:10px 14px;margin-bottom:16px;display:flex;align-items:flex-start;gap:10px">
+      <div style="flex:1;min-width:0">
+        <div style="font-size:12px;font-weight:600;color:var(--gray-700)">${prog.name} · ${grp.name}</div>
+        <div style="font-size:11px;color:var(--gray-500);margin-top:2px;display:flex;flex-wrap:wrap;gap:8px">
+          <span>📅 ${dateRange}</span>
+          ${modeName?`<span>Mode: ${modeName}</span>`:''}
+          ${grp.notes?`<span>💬 ${grp.notes}</span>`:''}
+        </div>
+      </div>
+    </div>`;
+  })():'';
   const chHTML=CHANNELS_ADMIN.map(c=>`<div class="ch-toggle ${formChannels.includes(c)?'on':''}" onclick="ssCh(this,'${c}')">${c}</div>`).join('');
   const customChHTML=formCustomChannels.map(c=>`<div class="ch-toggle on custom" onclick="ssRemoveCustomCh(this,'${c}')">${c} ×</div>`).join('');
   const comp=p?.compensation||POS_LOCATIONS.map(l=>({loc:l,min:'',max:'',currency:'USD'}));
@@ -1271,11 +1299,12 @@ function ssBuildForm(p) {
     <td><input type="number" class="c-max" data-loc="${c.loc}" value="${c.max}" placeholder="3500" min="0"></td>
     <td><select class="c-cur" data-loc="${c.loc}" style="padding:5px 6px;font-size:12px;"><option ${c.currency==='USD'?'selected':''}>USD</option><option ${c.currency==='EUR'?'selected':''}>EUR</option></select></td>
   </tr>`).join('');
-  const initModeDesc=p?.modeId?(getMode(p.modeId)?.description||''):'';
-  const initDelivRows=p?.modeId?ssBuildDelivRows(p.modeId,p.deliverableValues||[]):'';
+  const initModeDesc=selectedModeId?(getMode(selectedModeId)?.description||''):'';
+  const initDelivRows=selectedModeId?ssBuildDelivRows(selectedModeId,p?.deliverableValues||[],useDefaults):'';
   return `
     <div class="m-section">
       <div class="m-section-title">Cooperation Mode & Deliverables</div>
+      ${groupBanner}
       <div class="form-group">
         <label class="form-label">Cooperation Mode <span class="req">*</span></label>
         <select id="m-mode" onchange="ssOnModeChange()">
@@ -1304,16 +1333,17 @@ function ssBuildForm(p) {
     </div>`;
 }
 
-function ssBuildDelivRows(modeId, values) {
+function ssBuildDelivRows(modeId, values, useDefaults=false) {
   const mode=getMode(modeId); if(!mode) return '';
   const rows=mode.deliverables.map(def=>{
     const val=values.find(v=>v.id===def.id)||{};
+    const countVal=val.count!=null?val.count:(useDefaults&&def.defaultCount!=null?def.defaultCount:'');
     const countLbl=`<span class="deliv-field-label">Count${!def.hasCount?' <span style="color:var(--gray-300);font-weight:400;">(opt)</span>':''}</span>`;
-    const dateLbl =`<span class="deliv-field-label">Date${!def.isTimeline?' <span style="color:var(--gray-300);font-weight:400;">(opt)</span>':''}</span>`;
+    const dateLbl =`<span class="deliv-field-label">Date</span>`;
     return `<div class="deliv-row">
       <div class="deliv-icon">${def.icon}</div>
       <div class="deliv-name">${def.label}</div>
-      <div class="deliv-count">${countLbl}<input type="number" data-deliv="${def.id}" data-field="count" value="${val.count??''}" placeholder="—" min="1"></div>
+      <div class="deliv-count">${countLbl}<input type="number" data-deliv="${def.id}" data-field="count" value="${countVal}" placeholder="—" min="1"></div>
       <div class="deliv-date">${dateLbl}<input type="date" data-deliv="${def.id}" data-field="date" value="${val.date||''}"></div>
     </div>`;
   }).join('');
@@ -1324,8 +1354,10 @@ function ssOnModeChange() {
   const modeId=document.getElementById('m-mode').value;
   const mode=getMode(modeId);
   document.getElementById('m-mode-hint').textContent=mode?.description||'';
-  const fill=(modeId===formOriginalModeId)?formPrefillValues:[];
-  document.getElementById('m-deliverables-wrap').innerHTML=modeId?ssBuildDelivRows(modeId,fill):'';
+  const isOriginalMode=modeId===formOriginalModeId;
+  const fill=isOriginalMode?formPrefillValues:[];
+  const useDefaults=!isOriginalMode; // use defaultCounts when switching to a new mode
+  document.getElementById('m-deliverables-wrap').innerHTML=modeId?ssBuildDelivRows(modeId,fill,useDefaults):'';
 }
 function ssCh(el,ch) {
   el.classList.toggle('on');
@@ -1689,11 +1721,16 @@ function hpGroupModal(mode,gid) {
         </label>`;
       }).join('')
     : `<div style="font-size:12px;color:var(--gray-400);padding:6px 0">No positions in the portal yet.</div>`;
+  const modeOpts=COOPERATION_MODES.map(m=>`<option value="${m.id}" ${g?.modeId===m.id?'selected':''}>${m.name}</option>`).join('');
   const body=`
     <div class="fg"><label class="fl">Group Name *</label><input class="fi" id="m-gname" placeholder='e.g. "Wave 1", "Phase 2"...' value="${g?.name||''}"></div>
     <div class="form-row">
       <div class="fg"><label class="fl">Start Date *</label><input class="fi" type="date" id="m-gstart" value="${g?.startDate||''}"></div>
       <div class="fg"><label class="fl">End Date</label><input class="fi" type="date" id="m-gend" value="${g?.endDate||''}"></div>
+    </div>
+    <div class="fg"><label class="fl">Cooperation Mode <span style="font-weight:400;color:var(--gray-400)">(optional)</span></label>
+      <select class="fs" id="m-gmode"><option value="">— Not specified —</option>${modeOpts}</select>
+      <div style="font-size:11px;color:var(--gray-400);margin-top:4px">Pre-selects this mode when recruiters create a strategy for positions in this group</div>
     </div>
     <div class="fg"><label class="fl">Notes</label><textarea class="fta" id="m-gnotes" placeholder="Context, constraints...">${g?.notes||''}</textarea></div>
     <div class="fg"><label class="fl">Positions in this Group</label><div style="max-height:220px;overflow-y:auto;margin-top:4px">${posRows}</div></div>`;
@@ -1706,14 +1743,15 @@ function hpSaveGroup() {
   const endDate=document.getElementById('m-gend').value;
   const notes=document.getElementById('m-gnotes').value.trim();
   if(!name||!startDate){alert('Group name and start date are required.');return;}
+  const gModeId=document.getElementById('m-gmode')?.value||null;
   const p=programs.find(x=>x.id===hpCurrentId);
   let gId;
   if(hpModalMode==='new-group'){
-    const ng={id:uid(),name,startDate,endDate:endDate||null,notes};
+    const ng={id:uid(),name,startDate,endDate:endDate||null,notes,modeId:gModeId||null};
     p.groups.push(ng); hpExpanded.add(ng.id); gId=ng.id;
   } else {
     const g=p.groups.find(x=>x.id===hpEditGid);
-    Object.assign(g,{name,startDate,endDate:endDate||null,notes}); gId=hpEditGid;
+    Object.assign(g,{name,startDate,endDate:endDate||null,notes,modeId:gModeId||null}); gId=hpEditGid;
   }
   // Apply position assignments — also set programId when linking via group modal
   document.querySelectorAll('input[data-pos]:not([disabled])').forEach(inp=>{
