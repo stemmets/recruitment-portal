@@ -565,6 +565,7 @@ const COOPERATION_MODES = [
   {
     id: 'dtcc', name: 'DTCC',
     description: 'Standard DTCC — includes client-side external interviews',
+    avgDays: 90,
     deliverables: [
       { id:'profiles', label:'Profiles to Review',  icon:'👁', hasCount:true,  isTimeline:false, defaultCount:50 },
       { id:'cvs',      label:'CVs to HM',           icon:'📄', hasCount:true,  isTimeline:true,  defaultCount:10 },
@@ -577,6 +578,7 @@ const COOPERATION_MODES = [
   {
     id: 'standard', name: 'Standard (Internal Only)',
     description: 'Internal interviews only — no client interview stage',
+    avgDays: 60,
     deliverables: [
       { id:'profiles', label:'Profiles to Review',  icon:'👁', hasCount:true,  isTimeline:false, defaultCount:50 },
       { id:'cvs',      label:'CVs to HM',           icon:'📄', hasCount:true,  isTimeline:true,  defaultCount:10 },
@@ -588,6 +590,7 @@ const COOPERATION_MODES = [
   {
     id: 'talent_pool', name: 'Talent Pool Build',
     description: 'Build a candidate pipeline for potential positions (no offer)',
+    avgDays: 120,
     deliverables: [
       { id:'profiles',  label:'Profiles to Review',   icon:'👁', hasCount:true,  isTimeline:false, defaultCount:100 },
       { id:'screened',  label:'Screened Candidates',  icon:'✅', hasCount:true,  isTimeline:true,  defaultCount:30  },
@@ -707,9 +710,10 @@ let ssModalMode        = 'new';
 let ssEditingId        = null;
 let formChannels       = [];
 let formCustomChannels = [];
-let formOriginalModeId = null;
-let formPrefillValues  = [];
-let formGroupCtx       = null;
+let formOriginalModeId      = null;
+let formPrefillValues       = [];
+let formGroupCtx            = null;
+let formEstimatedStartDate  = '';
 let histListOpen       = false;
 let histOpen           = {};
 
@@ -788,6 +792,16 @@ function getProgramRange(p) {
 ══════════════════════════════════════════════ */
 function getMode(id) { return COOPERATION_MODES.find(m=>m.id===id); }
 function nextVer()   { const ps=strategies.filter(s=>s.positionId===currentId); return ps.length?Math.max(...ps.map(s=>s.version))+1:1; }
+function parseExpDate(d) {
+  if(!d) return null;
+  if(/^\d{4}-\d{2}-\d{2}$/.test(d)) return new Date(d+'T00:00:00');
+  const p=new Date(d); return isNaN(p)?null:p;
+}
+function addDaysToDate(d,n) {
+  const dt=parseExpDate(d); if(!dt) return '';
+  dt.setDate(dt.getDate()+n);
+  return dt.toISOString().slice(0,10);
+}
 
 /* ══════════════════════════════════════════════
    NAVIGATION
@@ -1052,20 +1066,31 @@ function ssRenderProgramBanner() {
 
 function ssRenderStrategyBar(s) {
   const mode=getMode(s.modeId);
+  const curPos=positions.find(x=>x.id===currentId);
+  const expDate=curPos?.exp?(()=>{const d=parseExpDate(curPos.exp);return d?d.toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'numeric'}):'—';})():'—';
+  const estDate=s.estimatedStartDate?(()=>{const d=parseExpDate(s.estimatedStartDate);return d?d.toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'numeric'}):'—';})():'—';
+  const datesBlock=(curPos?.exp||s.estimatedStartDate)?`<div style="display:flex;gap:16px;align-items:center;padding:8px 14px;background:var(--gray-50);border-radius:8px;border:1px solid var(--gray-100);margin-top:10px;font-size:12px;">
+    <span style="color:var(--gray-500)">Expected Start:</span><strong style="color:var(--gray-800)">${expDate}</strong>
+    <span style="color:var(--gray-300)">|</span>
+    <span style="color:var(--gray-500)">Estimated Start:</span><strong style="color:var(--gray-800)">${s.estimatedStartDate?estDate:'—'}</strong>
+  </div>`:'';
   return `
     <div class="strategy-bar">
-      <div class="strategy-bar-info">
-        <span class="strat-version">Strategy</span>
-        <span class="badge b-version">v${s.version}</span>
-        <span class="badge b-active">Active</span>
-        ${mode?`<span class="badge b-mode">⚙ ${mode.name}</span>`:''}
-        <span class="strat-meta">Created by</span>
-        <span class="flex items-center gap-8 text-sm">
-          <span class="avatar av-sm" style="background:${avColor(s.createdBy)};">${avInitials(s.createdBy)}</span>
-          ${s.createdBy}
-        </span>
-        <span class="strat-meta">· ${fmt(s.createdAt)}</span>
-        ${s.versionNote?`<span class="strat-meta" style="font-style:italic;">— ${s.versionNote}</span>`:''}
+      <div class="strategy-bar-info" style="flex-direction:column;align-items:flex-start;">
+        <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+          <span class="strat-version">Strategy</span>
+          <span class="badge b-version">v${s.version}</span>
+          <span class="badge b-active">Active</span>
+          ${mode?`<span class="badge b-mode">⚙ ${mode.name}</span>`:''}
+          <span class="strat-meta">Created by</span>
+          <span class="flex items-center gap-8 text-sm">
+            <span class="avatar av-sm" style="background:${avColor(s.createdBy)};">${avInitials(s.createdBy)}</span>
+            ${s.createdBy}
+          </span>
+          <span class="strat-meta">· ${fmt(s.createdAt)}</span>
+          ${s.versionNote?`<span class="strat-meta" style="font-style:italic;">— ${s.versionNote}</span>`:''}
+        </div>
+        ${datesBlock}
       </div>
       <div class="strategy-bar-actions">
         <button class="btn btn-secondary btn-sm" onclick="ssOpenModal('edit',${s.id})">✎ Edit</button>
@@ -1258,6 +1283,7 @@ function ssOpenModal(mode,id=null) {
   const curProg=curPos?.programId?programs.find(x=>x.id===curPos.programId):null;
   const curGrp=curProg&&curPos?.groupId?curProg.groups.find(g=>g.id===curPos.groupId):null;
   formGroupCtx=curGrp?{prog:curProg,grp:curGrp}:null;
+  formEstimatedStartDate=prefill?.estimatedStartDate||'';
   const ver=mode==='new'?nextVer():(prefill?.version||'?');
   document.getElementById('ss-modal-title').textContent=mode==='new'?`Create Strategy v${ver}`:`Edit Strategy v${ver}`;
   document.getElementById('ss-modal-save-btn').textContent='Save';
@@ -1300,7 +1326,9 @@ function ssBuildForm(p) {
     <td><select class="c-cur" data-loc="${c.loc}" style="padding:5px 6px;font-size:12px;"><option ${c.currency==='USD'?'selected':''}>USD</option><option ${c.currency==='EUR'?'selected':''}>EUR</option></select></td>
   </tr>`).join('');
   const initModeDesc=selectedModeId?(getMode(selectedModeId)?.description||''):'';
-  const initDelivRows=selectedModeId?ssBuildDelivRows(selectedModeId,p?.deliverableValues||[],useDefaults):'';
+  const curPos=positions.find(x=>x.id===currentId);
+  const posExp=curPos?.exp||'';
+  const initModeBody=selectedModeId?ssBuildModeBody(selectedModeId,p?.deliverableValues||[],useDefaults,posExp,p?.estimatedStartDate||''):'';
   return `
     <div class="m-section">
       <div class="m-section-title">Cooperation Mode & Deliverables</div>
@@ -1312,7 +1340,7 @@ function ssBuildForm(p) {
         </select>
         <div class="form-hint" id="m-mode-hint" style="margin-top:6px;color:var(--gray-500);">${initModeDesc}</div>
       </div>
-      <div id="m-deliverables-wrap">${initDelivRows}</div>
+      <div id="m-deliverables-wrap">${initModeBody}</div>
     </div>
     <div class="m-section">
       <div class="m-section-title">Search Channels</div>
@@ -1331,6 +1359,27 @@ function ssBuildForm(p) {
       <div class="m-section-title">Approach & Notes</div>
       <div class="form-group"><textarea id="m-notes" placeholder="Hiring approach, special considerations, agreed process details…">${p?.notes||''}</textarea></div>
     </div>`;
+}
+
+function ssBuildModeBody(modeId, values, useDefaults, posExp, existingEstDate) {
+  if(!modeId) return '';
+  const mode=getMode(modeId); if(!mode) return '';
+  let estDate=existingEstDate||'';
+  if(!estDate && posExp && mode.avgDays) estDate=addDaysToDate(posExp,mode.avgDays);
+  const expFormatted=posExp?(()=>{const d=parseExpDate(posExp);return d?d.toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'numeric'}):'—';})():'—';
+  const dateBlock=`<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin:8px 0 14px;padding:12px 14px;background:var(--gray-50);border-radius:8px;border:1px solid var(--gray-100)">
+    <div>
+      <div style="font-size:11px;font-weight:600;color:var(--gray-500);letter-spacing:.4px;text-transform:uppercase;margin-bottom:6px">Expected Start</div>
+      <div style="font-size:14px;font-weight:500;color:var(--gray-800)">${expFormatted}</div>
+      <div style="font-size:11px;color:var(--gray-400);margin-top:3px">Set by hiring manager</div>
+    </div>
+    <div>
+      <div style="font-size:11px;font-weight:600;color:var(--gray-500);letter-spacing:.4px;text-transform:uppercase;margin-bottom:5px">Estimated Start</div>
+      <input type="date" id="m-est-start" value="${estDate}" style="width:100%;padding:6px 8px;border:1px solid var(--gray-200);border-radius:6px;font-size:13px;font-family:inherit;color:var(--gray-800)">
+      ${mode.avgDays?`<div style="font-size:11px;color:var(--gray-400);margin-top:3px">Auto: req. date + ${mode.avgDays} days (${mode.name})</div>`:''}
+    </div>
+  </div>`;
+  return dateBlock+ssBuildDelivRows(modeId,values,useDefaults);
 }
 
 function ssBuildDelivRows(modeId, values, useDefaults=false) {
@@ -1356,8 +1405,12 @@ function ssOnModeChange() {
   document.getElementById('m-mode-hint').textContent=mode?.description||'';
   const isOriginalMode=modeId===formOriginalModeId;
   const fill=isOriginalMode?formPrefillValues:[];
-  const useDefaults=!isOriginalMode; // use defaultCounts when switching to a new mode
-  document.getElementById('m-deliverables-wrap').innerHTML=modeId?ssBuildDelivRows(modeId,fill,useDefaults):'';
+  const useDefaults=!isOriginalMode;
+  const curPos=positions.find(x=>x.id===currentId);
+  const posExp=curPos?.exp||'';
+  // Restore saved estDate when switching back to original mode; otherwise recalculate
+  const estDate=isOriginalMode?formEstimatedStartDate:'';
+  document.getElementById('m-deliverables-wrap').innerHTML=modeId?ssBuildModeBody(modeId,fill,useDefaults,posExp,estDate):'';
 }
 function ssCh(el,ch) {
   el.classList.toggle('on');
@@ -1398,14 +1451,15 @@ function saveStrategy() {
   });
   const notes=document.getElementById('m-notes').value.trim();
   const verNote=document.getElementById('m-note')?.value?.trim()||'';
+  const estimatedStartDate=document.getElementById('m-est-start')?.value||'';
   if(ssModalMode==='new'){
     strategies.forEach(s=>{if(s.status==='active'&&s.positionId===currentId)s.status='archived';});
     const ver=nextVer();
-    strategies.push({id:Date.now(),version:ver,status:'active',positionId:currentId,createdAt:new Date().toISOString().slice(0,10),createdBy:'Sarah Park',modeId,deliverableValues,channels:[...formChannels],customChannels:[...formCustomChannels],compensation:comp,notes});
+    strategies.push({id:Date.now(),version:ver,status:'active',positionId:currentId,createdAt:new Date().toISOString().slice(0,10),createdBy:'Sarah Park',modeId,estimatedStartDate,deliverableValues,channels:[...formChannels],customChannels:[...formCustomChannels],compensation:comp,notes});
     toast(`✓ Strategy v${ver} saved — previous version archived`);
   } else {
     const idx=strategies.findIndex(s=>s.id===ssEditingId);
-    if(idx>=0) strategies[idx]={...strategies[idx],modeId,deliverableValues,channels:[...formChannels],customChannels:[...formCustomChannels],compensation:comp,notes};
+    if(idx>=0) strategies[idx]={...strategies[idx],modeId,estimatedStartDate,deliverableValues,channels:[...formChannels],customChannels:[...formCustomChannels],compensation:comp,notes};
     toast('✓ Strategy updated');
   }
   ssCloseModal(); ssRender(); persist();
